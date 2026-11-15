@@ -36,8 +36,12 @@ class FakeSonos:
         self.enqueued.append((speaker, items, play_now))
         return 1
 
-    def control(self, speaker, action):
-        self.controls.append((speaker, action))
+    def control(self, speaker, action, value=None):
+        self.controls.append((speaker, action, value))
+
+    def queue(self, speaker):
+        self.get(speaker)
+        return [{"title": "Song", "artist": "Chan", "album_art": ""}]
 
     def set_volume(self, speaker, volume):
         self.controls.append((speaker, "volume", volume))
@@ -132,7 +136,11 @@ def test_play_by_ids_and_errors(srv):
 def test_control(srv):
     base, _, sonos = srv
     assert call(base + "/api/control", {"speaker": "Küche", "action": "pause", "volume": 30})[0] == 200
-    assert sonos.controls == [("Küche", "volume", 30), ("Küche", "pause")]
+    assert call(base + "/api/control", {"speaker": "Küche", "action": "seek", "value": 42})[0] == 200
+    assert sonos.controls == [
+        ("Küche", "volume", 30), ("Küche", "pause", None), ("Küche", "seek", 42),
+    ]
+    assert json.loads(call(base + "/api/queue?speaker=K%C3%BCche")[2])[0]["title"] == "Song"
     assert call(base + "/api/status?speaker=K%C3%BCche")[0] == 200
     assert call(base + "/api/status?speaker=x")[0] == 404
 

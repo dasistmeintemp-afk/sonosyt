@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="android:Theme.DeviceDefault.Light.DarkActionBar" />
+    <!-- No title bar: the web UI fills the screen; system bars match its background. -->
+    <style name="AppTheme" parent="android:Theme.DeviceDefault.DayNight">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/page</item>
+        <item name="android:statusBarColor">@color/page</item>
+        <item name="android:navigationBarColor">@color/player</item>
+        <item name="android:windowLightStatusBar">@bool/light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/light_bars</item>
+    </style>
 </resources>

@@ -52,8 +52,14 @@ python3 -m venv .venv
 3. App starten und **Im Netzwerk suchen** antippen – oder die Adresse des NAS eingeben
    (z. B. `192.168.1.10`).
 
-Danach: in der App suchen und abspielen, oder in der YouTube-App **Teilen → sonosyt** wählen.
-Den Server ändern kannst du über das Menü (⋮) oben rechts.
+Danach:
+
+- **Suchen und antippen** spielt sofort im gewählten Raum; das Plus-Symbol reiht den Titel ein.
+- **Teilen → sonosyt** in der YouTube-App spielt das Video direkt ab.
+- **Die Lautstärketasten des Handys** regeln die Sonos-Lautstärke, solange die App geöffnet ist
+  (bei gruppierten Räumen die der ganzen Gruppe).
+- Unten: Spulen, Pause, Titel vor/zurück, Lautstärke und die Warteschlange.
+- Das Zahnrad oben rechts ändert die Server-Adresse.
 
 Die APK wird bei jeder Änderung unter `android/` automatisch von GitHub Actions gebaut.
 Selbst bauen: `cd android && ./gradlew assembleRelease` (benötigt das Android SDK).
