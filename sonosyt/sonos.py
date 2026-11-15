@@ -43,7 +43,9 @@ def build_didl(track: Track, uri: str):
     from soco.data_structures import DidlMusicTrack, DidlResource
 
     resource = DidlResource(
-        uri=uri, protocol_info="http-get:*:audio/mpeg:*", duration=_hms(track.duration)
+        uri=uri,
+        protocol_info="http-get:*:audio/mpeg:*",
+        duration=None if track.live else _hms(track.duration),
     )
     return DidlMusicTrack(
         title=track.title,
@@ -193,11 +195,64 @@ class SonosController:
             coord.play_from_queue(int(value))
         elif action == "remove":
             coord.remove_from_queue(int(value))
+        elif action in ("shuffle", "repeat"):
+            # Only possible while the queue is playing; Sonos refuses otherwise.
+            try:
+                if action == "shuffle":
+                    coord.shuffle = bool(value)
+                else:
+                    coord.repeat = {0: False, 1: True, 2: "ONE"}[int(value or 0)]
+            except KeyError:
+                raise SonosError("Ungültiger Wert für Wiederholen.")
+            except Exception as exc:  # noqa: BLE001
+                raise SonosError(
+                    "Zufall/Wiederholen geht nur, während die Warteschlange läuft."
+                ) from exc
+        elif action == "sleep":  # minutes; 0 switches the timer off
+            minutes = max(0, int(value or 0))
+            coord.set_sleep_timer(minutes * 60 if minutes else None)
         else:
             raise SonosError(f"Unbekannte Aktion: {action!r}")
 
-    def set_volume(self, speaker: str, volume: int) -> None:
-        self._volume_target(self.get(speaker)).volume = max(0, min(100, int(volume)))
+    def set_volume(self, speaker: str, volume: int, single: bool = False) -> None:
+        """Set the volume of a room's whole group, or with ``single`` just the room."""
+        dev = self.get(speaker)
+        target = dev if single else self._volume_target(dev)
+        target.volume = max(0, min(100, int(volume)))
+
+    # -- rooms / grouping ----------------------------------------------------
+
+    def rooms(self, speaker: str) -> list[dict]:
+        """All rooms, with their own volume and whether they play with ``speaker``."""
+        dev = self.get(speaker)
+        try:
+            members = {m.ip_address for m in dev.group.members}
+        except Exception:  # noqa: BLE001
+            members = {dev.ip_address}
+        out = []
+        for room in self.devices():
+            try:
+                volume = room.volume
+            except Exception:  # noqa: BLE001 - unreachable room
+                continue
+            out.append({
+                "name": room.player_name,
+                "volume": volume,
+                "grouped": room.ip_address in members,
+                "selected": room.ip_address == dev.ip_address,
+            })
+        return out
+
+    def group(self, speaker: str, room: str, join: bool) -> None:
+        """Add ``room`` to the group ``speaker`` plays in, or take it out."""
+        dev = self.get(speaker)
+        other = self.get(room)
+        if other.ip_address == dev.ip_address:
+            raise SonosError("Der gewählte Raum gehört immer dazu.")
+        if join:
+            other.join(self._coordinator(dev))
+        else:
+            other.unjoin()
 
     def status(self, speaker: str) -> dict:
         dev = self.get(speaker)
@@ -205,7 +260,8 @@ class SonosController:
         info = coord.get_current_track_info()
         transport = coord.get_current_transport_info()
         uri = info.get("uri") or ""
-        ours = re.search(r"/stream/([A-Za-z0-9_-]{11})\.mp3$", uri)
+        ours = re.search(r"/(stream|live)/([A-Za-z0-9_-]{11})\.mp3$", uri)
+        mode = self._safe(lambda: coord.play_mode, "NORMAL") or "NORMAL"
         return {
             "speaker": dev.player_name,
             "state": transport.get("current_transport_state", ""),
@@ -216,9 +272,21 @@ class SonosController:
             "album_art": info.get("album_art", ""),
             "queue_position": int(info.get("playlist_position") or 0)
             if str(info.get("playlist_position") or "").isdigit() else 0,
-            "video_id": ours.group(1) if ours else None,
+            "queue_length": self._safe(lambda: coord.queue_size, 0),
+            "video_id": ours.group(2) if ours else None,
+            "live": bool(ours and ours.group(1) == "live"),
+            "shuffle": "SHUFFLE" in mode,
+            "repeat": 2 if "REPEAT_ONE" in mode else int(mode in ("REPEAT_ALL", "SHUFFLE")),
+            "sleep": self._safe(coord.get_sleep_timer, 0) or 0,  # seconds left
             "volume": self._volume_target(dev).volume,
         }
+
+    @staticmethod
+    def _safe(fn, default):
+        try:
+            return fn()
+        except Exception:  # noqa: BLE001 - optional detail the speaker may refuse
+            return default
 
     def queue(self, speaker: str) -> list[dict]:
         coord = self._coordinator(self.get(speaker))

@@ -3,7 +3,9 @@ package io.github.sonosyt;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.KeyEvent;
@@ -11,6 +13,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
@@ -45,7 +48,8 @@ import java.util.regex.Pattern;
  */
 public class MainActivity extends Activity {
     private static final int DEFAULT_PORT = 8327;
-    private static final String PREF_SERVER = "server_url";
+    private static final String PREF_SERVER = PlaybackService.PREF_SERVER;
+    private static final String NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS";
     /** Link in the web UI (gear icon) that opens the server setup screen. */
     private static final String SETTINGS_URL = "sonosyt://settings";
     private static final Pattern URL_IN_TEXT = Pattern.compile("https?://\\S+");
@@ -63,7 +67,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        prefs = getSharedPreferences("sonosyt", MODE_PRIVATE);
+        prefs = getSharedPreferences(PlaybackService.PREFS, MODE_PRIVATE);
 
         FrameLayout root = new FrameLayout(this);
         web = buildWebView();
@@ -77,10 +81,51 @@ public class MainActivity extends Activity {
         if (savedInstanceState == null) {
             pendingQuery = sharedLink(getIntent());
         }
+        // The media notification needs this on Android 13+. Asked once.
+        if (Build.VERSION.SDK_INT >= 33 && !prefs.getBoolean("asked_notifications", false)
+                && checkSelfPermission(NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            prefs.edit().putBoolean("asked_notifications", true).apply();
+            requestPermissions(new String[] {NOTIFICATIONS}, 1);
+        }
         if (server() == null) {
             showSetup(null);
         } else {
             openServer();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        startPlaybackService();
+    }
+
+    /** Starts (or wakes) the background controls once server and room are known. */
+    private void startPlaybackService() {
+        if (server() == null || prefs.getString(PlaybackService.PREF_SPEAKER, null) == null) {
+            return;
+        }
+        try {
+            startForegroundService(new Intent(this, PlaybackService.class)
+                    .setAction(PlaybackService.ACTION_REFRESH));
+        } catch (Exception ignored) { // not allowed right now, e.g. app not in front
+        }
+    }
+
+    /** Called by the web UI (window.SonosytApp). */
+    private final class Bridge {
+        @JavascriptInterface
+        public void setSpeaker(final String name) {
+            if (name == null || name.isEmpty() || name.length() > 200) {
+                return;
+            }
+            prefs.edit().putString(PlaybackService.PREF_SPEAKER, name).apply();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    startPlaybackService();
+                }
+            });
         }
     }
 
@@ -106,6 +151,7 @@ public class MainActivity extends Activity {
         // Tells the web UI it runs inside the app (shows the settings button).
         view.getSettings().setUserAgentString(
                 view.getSettings().getUserAgentString() + " sonosyt-app");
+        view.addJavascriptInterface(new Bridge(), "SonosytApp");
         view.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, String url) {

@@ -54,11 +54,19 @@ python3 -m venv .venv
 
 Danach:
 
-- **Suchen und antippen** spielt sofort im gewählten Raum; das Plus-Symbol reiht den Titel ein.
+- **Suchen und antippen** spielt sofort im gewählten Raum; das Plus-Symbol reiht den Titel ein,
+  der Stern merkt ihn als Favorit. Favoriten und zuletzt Gespieltes stehen auf der Startseite.
 - **Teilen → sonosyt** in der YouTube-App spielt das Video direkt ab.
-- **Die Lautstärketasten des Handys** regeln die Sonos-Lautstärke, solange die App geöffnet ist
-  (bei gruppierten Räumen die der ganzen Gruppe).
-- Unten: Spulen, Pause, Titel vor/zurück, Lautstärke und die Warteschlange.
+- **Die Lautstärketasten des Handys** regeln die Sonos-Lautstärke – in der App und, solange
+  Musik läuft, auch bei gesperrtem Bildschirm (bei gruppierten Räumen die der ganzen Gruppe).
+- **Benachrichtigung und Sperrbildschirm** zeigen den laufenden Titel mit Pause und
+  Titel vor/zurück. Läuft 15 Minuten nichts, verschwindet die Benachrichtigung wieder.
+- **Unten:** Spulen, Pause, Titel vor/zurück, Lautstärke und die Warteschlange. Dort gibt es
+  auch Zufall, Wiederholen, Autoplay (nach dem letzten Titel läuft passende Musik weiter)
+  und den Sleep-Timer.
+- **Räume** (Symbol oben rechts): Räume zusammenschalten und jeden einzeln in der Lautstärke
+  regeln.
+- **Livestreams** (z. B. Lofi-Radio) sind in der Suche mit „LIVE" markiert und laufen endlos.
 - Das Zahnrad oben rechts ändert die Server-Adresse.
 
 Die APK wird bei jeder Änderung unter `android/` automatisch von GitHub Actions gebaut.
@@ -93,6 +101,7 @@ sehen, überspringen und pausieren.
 | `--public-url URL` | Adresse, unter der die Lautsprecher den Server erreichen, falls die automatische Erkennung nicht passt |
 | `--cache-dir`, `--cache-size-mb 2048` | Ort und Maximalgröße des MP3-Zwischenspeichers |
 | `--bitrate 192k` | MP3-Bitrate |
+| `--auto-update` | yt-dlp beim Start und danach täglich aktualisieren (im Docker-Image eingeschaltet) |
 
 ## Wie es funktioniert
 
@@ -118,9 +127,10 @@ zwischen den VLANs erlauben:
 
 - Der Server hat **keine Anmeldung**: Jeder im Netzwerk kann ihn bedienen. Nicht ins Internet
   freigeben.
-- Funktioniert ein Video plötzlich nicht mehr, hilft meist ein Update von yt-dlp:
-  `docker compose build --no-cache && docker compose up -d` bzw.
+- YouTube ändert sich häufig. Der Docker-Container hält yt-dlp deshalb selbst aktuell
+  (beim Start und einmal täglich). Ohne Docker: `sonosyt serve --auto-update` oder von Hand
   `.venv/bin/pip install -U yt-dlp`.
+- Favoriten, Verlauf und Autoplay-Einstellung liegen in `library.json` im Cache-Verzeichnis.
 - Die APK ist mit einem Schlüssel signiert, der offen in diesem Repository liegt
   (`android/sonosyt.keystore`), damit Updates sich ohne Deinstallation einspielen lassen.
   Installiere deshalb nur APKs aus diesem Repository.

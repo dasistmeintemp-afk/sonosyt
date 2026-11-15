@@ -57,6 +57,11 @@ def cmd_serve(args) -> int:
         port=args.port,
         public_url=args.public_url,
     )
+    app.start_autoplay()
+    if args.auto_update:
+        from .updater import start_auto_update
+
+        start_auto_update()
     server = make_server(app, args.host)
     print(f"sonosyt läuft: http://localhost:{app.port}/  (Strg+C zum Beenden)")
     try:
@@ -129,6 +134,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--cache-dir", default=_default_cache_dir())
     p.add_argument("--cache-size-mb", type=int, default=2048)
     p.add_argument("--bitrate", default="192k", help="MP3-Bitrate (Standard: %(default)s)")
+    p.add_argument(
+        "--auto-update", action="store_true",
+        help="yt-dlp beim Start und danach täglich per pip aktualisieren",
+    )
     p.set_defaults(func=cmd_serve)
 
     p = sub.add_parser("speakers", help="Sonos-Lautsprecher auflisten")
