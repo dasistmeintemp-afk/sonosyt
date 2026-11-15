@@ -148,9 +148,14 @@ public class MainActivity extends Activity {
         WebView view = new WebView(this);
         view.getSettings().setJavaScriptEnabled(true);
         view.getSettings().setDomStorageEnabled(true); // remembers the chosen speaker
-        // Tells the web UI it runs inside the app (shows the settings button).
+        // Tells the web UI it runs inside the app (settings button, update hint).
+        String version = "0";
+        try {
+            version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception ignored) {
+        }
         view.getSettings().setUserAgentString(
-                view.getSettings().getUserAgentString() + " sonosyt-app");
+                view.getSettings().getUserAgentString() + " sonosyt-app/" + version);
         view.addJavascriptInterface(new Bridge(), "SonosytApp");
         view.setWebViewClient(new WebViewClient() {
             @Override
