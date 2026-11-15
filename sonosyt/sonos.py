@@ -108,6 +108,7 @@ class SonosController:
         self.ips = ips or []
         self.discovery_ttl = discovery_ttl
         self._speakers: list = []
+        self._upnp_refused: set[str] = set()  # speakers that only group via websocket
         self._discovered_at = 0.0
         self._lock = threading.Lock()
 
@@ -284,6 +285,10 @@ class SonosController:
         """All rooms, with their own volume and whether they play with ``speaker``."""
         dev = self.get(speaker)
         try:
+            dev.zone_group_state.clear_cache()  # show a regrouping at once, not 5 s later
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             members = {m.ip_address for m in dev.group.members}
         except Exception:  # noqa: BLE001
             members = {dev.ip_address}
@@ -308,25 +313,28 @@ class SonosController:
         if other.ip_address == dev.ip_address:
             raise SonosError("Der gewählte Raum gehört immer dazu.")
         coordinator = self._coordinator(dev)
-        try:
-            if join:
-                other.join(coordinator)
-            else:
-                other.unjoin()
-            return
-        except Exception as exc:  # noqa: BLE001 - the speaker refused
-            log.warning("grouping %s with %s over UPnP failed: %s", room, speaker, exc)
-            upnp_error = exc
+        upnp_error: Exception | None = None
+        if other.uid not in self._upnp_refused:
+            try:
+                if join:
+                    other.join(coordinator)
+                else:
+                    other.unjoin()
+                return
+            except Exception as exc:  # noqa: BLE001 - the speaker refused
+                log.warning("grouping %s with %s over UPnP failed: %s", room, speaker, exc)
+                upnp_error = exc
         # Some speakers (e.g. on an older software version than the rest) refuse
         # the classic command. The Sonos app groups through the speakers' newer
         # local control interface instead, so try that as well.
         try:
             _group_via_websocket(coordinator.ip_address, coordinator.uid, other.uid, join)
+            self._upnp_refused.add(other.uid)  # next time, skip the failing attempt
         except Exception as exc:  # noqa: BLE001
             log.warning("grouping %s with %s over websocket failed: %s", room, speaker, exc)
             raise SonosError(
                 f"{room} lässt sich gerade nicht {'hinzufügen' if join else 'herausnehmen'}"
-                f" – der Lautsprecher hat abgelehnt ({upnp_error})."
+                f" – der Lautsprecher hat abgelehnt ({upnp_error or exc})."
             ) from exc
         for device in (dev, other, coordinator):  # forget the cached grouping
             try:

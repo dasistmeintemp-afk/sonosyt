@@ -283,6 +283,9 @@ def test_live_stream_is_piped_and_ffmpeg_stops_with_the_listener(srv):
 def test_suggest_playlists_modes_and_move(srv):
     base, app, sonos = srv
     assert json.loads(call(base + "/api/suggest?q=fred")[2]) == ["fred live", "fred remix"]
+    related = json.loads(call(base + f"/api/related?id={VID}")[2])
+    assert [t["id"] for t in related] == ["llllllllll1", "bbbbbbbbbbb", "ddddddddddd"]
+    assert call(base + "/api/related?id=nope")[0] == 400
 
     call(base + "/api/search?q=beatles")
     status, _, body = call(base + "/api/playlist", {"name": "  Party   Mix ", "id": VID})
