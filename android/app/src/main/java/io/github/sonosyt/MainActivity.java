@@ -144,6 +144,26 @@ public class MainActivity extends Activity {
             });
         }
 
+        /** Opens Android's share sheet for a link. */
+        @JavascriptInterface
+        public void share(final String title, final String url) {
+            if (url == null || !url.startsWith("https://")) {
+                return;
+            }
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
+                            .putExtra(Intent.EXTRA_SUBJECT, title)
+                            .putExtra(Intent.EXTRA_TEXT, url);
+                    try {
+                        startActivity(Intent.createChooser(send, "Link teilen"));
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
+        }
+
         /** Step of the volume keys, also used by the lock-screen controls. */
         @JavascriptInterface
         public void setVolumeStep(int step) {

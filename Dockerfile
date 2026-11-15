@@ -1,5 +1,8 @@
 FROM python:3.12-slim
 
+# yt-dlp needs a JavaScript runtime to read YouTube's player code reliably.
+COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*

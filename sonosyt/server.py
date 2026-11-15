@@ -57,6 +57,7 @@ class App:
         self._active: dict[str, float] = {}  # speaker -> when it was last played to
         self._next_checked: dict[str, tuple] = {}
         self._ytdlp: tuple[float, str] | None = None
+        self.fetches: dict[str, float] = {}  # client address -> last audio request
         self.remember(self.library.tracks())
 
     # -- tracks --------------------------------------------------------------
@@ -68,8 +69,8 @@ class App:
             while len(self._tracks) > 2000:
                 self._tracks.pop(next(iter(self._tracks)))
 
-    def search(self, query: str, prefetch: bool = False) -> list[Track]:
-        tracks = self.lookup(query)
+    def search(self, query: str, prefetch: bool = False, limit: int = 10) -> list[Track]:
+        tracks = self.lookup(query, limit) if limit != 10 else self.lookup(query)
         self.remember(tracks)
         if prefetch:
             # Convert the most likely picks already, so a tap starts at once.
@@ -114,7 +115,53 @@ class App:
         position = self.sonos.enqueue(speaker, items, mode)
         self.library.played(tracks)
         self._active[speaker] = time.monotonic()
-        return {"queued": [t.to_dict() for t in tracks], "position": position}
+        resumed = self._resume(speaker, tracks[0]) if mode == "now" and len(tracks) == 1 else 0
+        return {"queued": [t.to_dict() for t in tracks], "position": position, "resumed": resumed}
+
+    def _resume(self, speaker: str, track: Track) -> int:
+        """Continue a long video where it was left. Returns the position, or 0."""
+        seconds = self.library.position(track.id)
+        if not seconds or track.live or not self.transcoder.cached(track.id):
+            return 0  # seeking needs the complete file
+        for _ in range(3):  # the speaker may still be switching tracks
+            try:
+                self.sonos.control(speaker, "seek", seconds)
+                return seconds
+            except Exception:  # noqa: BLE001
+                time.sleep(1)
+        return 0
+
+    def remember_position(self, status: dict) -> None:
+        """Note where a long video is, so it can be continued later."""
+        video_id, duration = status.get("video_id"), status.get("duration") or 0
+        if not video_id or status.get("live") or duration < 1200 or status.get("state") != "PLAYING":
+            return
+        position = status.get("position") or 0
+        if position >= duration - 60:
+            self.library.set_position(video_id, 0)  # finished
+        elif position > 30:
+            self.library.set_position(video_id, position)
+
+    def diagnose(self, speaker: str) -> dict:
+        """Checks for the settings screen: who can reach whom."""
+        import urllib.request
+
+        device = self.sonos.get(speaker)
+        try:
+            with urllib.request.urlopen("https://www.youtube.com/generate_204", timeout=6):
+                youtube_ok = True
+        except Exception:  # noqa: BLE001
+            youtube_ok = False
+        fetched = self.fetches.get(device.ip_address)
+        if fetched is None:  # a stereo pair or group may fetch through another member
+            fetched = max(self.fetches.values(), default=None)
+        return {
+            "youtube": youtube_ok,
+            "speaker": self.sonos.reachable(speaker),
+            "fetched_ago": None if fetched is None else int(time.time() - fetched),
+            "stream_base": self.stream_url(Track("xxxxxxxxxxx", ""), device.ip_address)
+            .rsplit("/stream/", 1)[0],
+        }
 
     def status(self, speaker: str) -> dict:
         status = self.sonos.status(speaker)
@@ -191,6 +238,7 @@ class App:
         for speaker in sorted(autoplay | set(self._active)):
             try:
                 status = self.sonos.status(speaker)
+                self.remember_position(status)
                 self.prefetch_next(speaker, status)
                 if speaker in autoplay:
                     self.autoplay_once(speaker, status)
@@ -265,6 +313,7 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(url.query)
         m = STREAM_RE.match(url.path)
         if m:
+            self.app.fetches[self.client_address[0]] = time.time()
             return self._live(m.group(2)) if m.group(1) == "live" else self._stream(m.group(2))
         if url.path in ("/", "/index.html"):
             return self._index()
@@ -275,7 +324,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._guard(lambda: self.app.sonos.speakers(refresh))
         if url.path == "/api/search":
             q = query.get("q", [""])[0]
-            return self._guard(lambda: [t.to_dict() for t in self.app.search(q, prefetch=True)])
+            limit = max(1, min(30, int(query.get("limit", ["10"])[0] or 10)))
+            return self._guard(
+                lambda: [t.to_dict() for t in self.app.search(q, prefetch=True, limit=limit)]
+            )
+        if url.path == "/api/diagnose":
+            speaker = query.get("speaker", [""])[0]
+            return self._guard(lambda: self.app.diagnose(speaker))
         if url.path == "/api/related":
             def related():
                 tracks = self.app.related(youtube.watch_id(query.get("id", [""])[0]))
@@ -369,8 +424,14 @@ class Handler(BaseHTTPRequestHandler):
                     self.app.library.playlist_remove(name, str(body["id"]))
                 elif op == "delete":
                     self.app.library.playlist_delete(name)
+                elif op == "set":
+                    ids = body.get("ids")
+                    if not isinstance(ids, list) or not ids:
+                        raise ValueError("ids must be a non-empty list")
+                    tracks = [self.app.track(youtube.watch_id(str(i))) for i in ids[:500]]
+                    self.app.library.playlist_set(name, tracks)
                 else:
-                    raise ValueError("op must be add, remove or delete")
+                    raise ValueError("op must be add, remove, delete or set")
                 return self.app.library.snapshot()
             return self._guard(playlist)
         if path == "/api/autoplay":
@@ -381,6 +442,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.app.library.set_autoplay(speaker, bool(body.get("on")))
                 return {"autoplay": self.app.library.autoplay(speaker)}
             return self._guard(autoplay)
+        if path == "/api/eq":
+            def eq():
+                body = self._body()
+                return self.app.sonos.set_eq(
+                    str(body["room"]), body.get("bass"), body.get("treble"), body.get("loudness")
+                )
+            return self._guard(eq)
         if path == "/api/group":
             def group():
                 body = self._body()

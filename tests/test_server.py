@@ -53,6 +53,13 @@ class FakeSonos:
         self.get(speaker)
         return dict(self.now)
 
+    def reachable(self, speaker):
+        return True
+
+    def set_eq(self, room, bass=None, treble=None, loudness=None):
+        self.controls.append((room, "eq", bass, treble, loudness))
+        return {"bass": bass or 0, "treble": treble or 0, "loudness": bool(loudness)}
+
     def rooms(self, speaker):
         return [{"name": "Küche", "volume": 20, "grouped": True, "selected": True}]
 
@@ -352,3 +359,61 @@ def test_info_and_clearing_cache_and_history(srv):
     call(base + f"/stream/{VID}.mp3")  # a cleared track simply converts again on demand
     app.transcoder.ensure(VID).done.wait(30)
     assert app.transcoder.cached(VID)
+
+
+def test_long_videos_resume_where_they_were_left(srv):
+    import time
+
+    base, app, sonos = srv
+    call(base + "/api/search?q=beatles")
+    long_playing = {"state": "PLAYING", "video_id": VID, "duration": 6000, "position": 2590,
+                    "queue_position": 1, "queue_length": 1, "live": False}
+    sonos.now = long_playing
+    app._active["Küche"] = time.monotonic()
+    app.monitor_once()
+    assert app.library.position(VID) == 2590
+    app.remember_position({**long_playing, "duration": 300})        # short clip: never stored
+    app.remember_position({**long_playing, "position": 2600})       # barely moved: no rewrite
+    assert app.library.position(VID) == 2590
+    from sonosyt.library import Library
+    assert Library(app.library.path).position(VID) == 2590          # survives a restart
+
+    status, _, body = call(base + "/api/play", {"speaker": "Küche", "ids": [VID]})
+    assert json.loads(body)["resumed"] == 2590
+    assert sonos.controls[-1] == ("Küche", "seek", 2590)
+    # Queued or several at once: plays from the start.
+    assert json.loads(call(base + "/api/play", {"speaker": "Küche", "ids": [VID], "mode": "queue"})[2])["resumed"] == 0
+
+    app.remember_position({**long_playing, "position": 5970})       # reached the end: forgotten
+    assert app.library.position(VID) == 0
+    assert json.loads(call(base + "/api/play", {"speaker": "Küche", "ids": [VID]})[2])["resumed"] == 0
+
+
+def test_more_results_bulk_playlists_eq_and_diagnose(srv, monkeypatch):
+    import urllib.request
+
+    base, app, sonos = srv
+    seen = []
+    app.lookup = lambda q, limit=10: seen.append(limit) or [Track(VID, "Song", "Chan", 1)]
+    call(base + "/api/search?q=x")
+    call(base + "/api/search?q=x&limit=25")
+    call(base + "/api/search?q=x&limit=999")
+    assert seen == [10, 25, 30]
+
+    app.remember([Track("bbbbbbbbbbb", "Other")])
+    body = call(base + "/api/playlist", {"name": "Import", "op": "set",
+                                         "ids": [VID, "bbbbbbbbbbb", VID]})[2]
+    assert [t["id"] for t in json.loads(body)["playlists"][0]["tracks"]] == [VID, "bbbbbbbbbbb"]
+    assert call(base + "/api/playlist", {"name": "Import", "op": "set", "ids": []})[0] == 400
+
+    assert json.loads(call(base + "/api/eq", {"room": "Küche", "bass": 4})[2])["bass"] == 4
+    assert sonos.controls[-1] == ("Küche", "eq", 4, None, None)
+
+    real = urllib.request.urlopen
+    monkeypatch.setattr(urllib.request, "urlopen", lambda url, timeout=None, **kw: (
+        (_ for _ in ()).throw(OSError("blocked")) if "youtube" in str(url) else real(url, timeout=timeout)))
+    diagnosis = json.loads(call(base + "/api/diagnose?speaker=K%C3%BCche")[2])
+    assert diagnosis == {"youtube": False, "speaker": True, "fetched_ago": None,
+                         "stream_base": f"http://10.0.0.2:{app.port}"}
+    call(base + f"/stream/{VID}.mp3")
+    assert json.loads(call(base + "/api/diagnose?speaker=K%C3%BCche")[2])["fetched_ago"] <= 5

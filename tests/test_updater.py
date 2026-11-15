@@ -16,7 +16,7 @@ def test_update_reports_new_version(monkeypatch):
     monkeypatch.setattr(updater.subprocess, "run", run)
     assert updater.update_ytdlp() is True
     pip = calls[1]
-    assert pip[1:4] == ["-m", "pip", "install"] and "--upgrade" in pip and pip[-1] == "yt-dlp"
+    assert pip[1:4] == ["-m", "pip", "install"] and "--upgrade" in pip and pip[-1] == "yt-dlp[default]"
 
 
 def test_update_failure_is_not_fatal(monkeypatch):

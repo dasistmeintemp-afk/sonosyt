@@ -29,7 +29,7 @@ def update_ytdlp() -> bool:
     try:
         proc = subprocess.run(
             [sys.executable, "-m", "pip", "install", "--quiet", "--upgrade",
-             "--disable-pip-version-check", "--no-cache-dir", "yt-dlp"],
+             "--disable-pip-version-check", "--no-cache-dir", "yt-dlp[default]"],
             capture_output=True, text=True, timeout=600,
         )
     except (OSError, subprocess.SubprocessError) as exc:
