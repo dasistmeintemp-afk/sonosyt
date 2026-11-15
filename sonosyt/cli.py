@@ -88,7 +88,8 @@ def cmd_play(args) -> int:
     result = _call(
         args.server,
         "/api/play",
-        {"speaker": args.speaker, "query": " ".join(args.query), "queue": args.queue},
+        {"speaker": args.speaker, "query": " ".join(args.query),
+         "mode": "queue" if args.queue else "now"},
     )
     verb = "Eingereiht" if args.queue else "Spiele"
     for t in result["queued"]:

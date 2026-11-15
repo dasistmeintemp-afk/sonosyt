@@ -54,19 +54,24 @@ python3 -m venv .venv
 
 Danach:
 
-- **Suchen und antippen** spielt sofort im gewählten Raum; das Plus-Symbol reiht den Titel ein,
-  der Stern merkt ihn als Favorit. Favoriten und zuletzt Gespieltes stehen auf der Startseite.
+- **Suchen und antippen** spielt sofort im gewählten Raum. Beim Tippen erscheinen
+  Suchvorschläge; die obersten Treffer werden schon vorbereitet, damit der Ton schnell kommt.
+- **Plus-Symbol** reiht den Titel ein. **Drei Punkte** öffnen das Menü: als Nächstes spielen,
+  Favorit, zu einer Playlist hinzufügen. Playlists, Favoriten und zuletzt Gespieltes stehen
+  auf der Startseite.
 - **Teilen → sonosyt** in der YouTube-App spielt das Video direkt ab.
 - **Die Lautstärketasten des Handys** regeln die Sonos-Lautstärke – in der App und, solange
   Musik läuft, auch bei gesperrtem Bildschirm (bei gruppierten Räumen die der ganzen Gruppe).
 - **Benachrichtigung und Sperrbildschirm** zeigen den laufenden Titel mit Pause und
   Titel vor/zurück. Läuft 15 Minuten nichts, verschwindet die Benachrichtigung wieder.
-- **Unten:** Spulen, Pause, Titel vor/zurück, Lautstärke und die Warteschlange. Dort gibt es
+- **Unten:** Spulen, Pause, Titel vor/zurück, Lautstärke und die Warteschlange (Titel am
+  Griff rechts verschieben, antippen zum Springen). Dort gibt es
   auch Zufall, Wiederholen, Autoplay (nach dem letzten Titel läuft passende Musik weiter)
   und den Sleep-Timer.
 - **Räume** (Symbol oben rechts): Räume zusammenschalten und jeden einzeln in der Lautstärke
   regeln.
 - **Livestreams** (z. B. Lofi-Radio) sind in der Suche mit „LIVE" markiert und laufen endlos.
+- Die Zurück-Taste schließt geöffnete Fenster und führt von Trefferlisten zur Startseite.
 - Das Zahnrad oben rechts ändert die Server-Adresse.
 
 Die APK wird bei jeder Änderung unter `android/` automatisch von GitHub Actions gebaut.

@@ -19,6 +19,7 @@ class Library:
         self._favorites: list[Track] = []
         self._history: list[Track] = []
         self._autoplay: set[str] = set()
+        self._playlists: dict[str, list[Track]] = {}
         self._load()
 
     def _load(self) -> None:
@@ -29,9 +30,9 @@ class Library:
         if not isinstance(data, dict):
             return
 
-        def tracks(key: str) -> list[Track]:
+        def tracks(key, source=data) -> list[Track]:
             out = []
-            for item in data.get(key) or []:
+            for item in source.get(key) or []:
                 try:
                     out.append(Track.from_dict(item))
                 except (KeyError, TypeError, ValueError):
@@ -41,12 +42,16 @@ class Library:
         self._favorites = tracks("favorites")
         self._history = tracks("history")[:HISTORY_LIMIT]
         self._autoplay = {str(name) for name in data.get("autoplay") or []}
+        for entry in data.get("playlists") or []:
+            if isinstance(entry, dict) and entry.get("name"):
+                self._playlists[str(entry["name"])] = tracks("tracks", entry)
 
     def _save(self) -> None:
         data = {
             "favorites": [t.to_dict() for t in self._favorites],
             "history": [t.to_dict() for t in self._history],
             "autoplay": sorted(self._autoplay),
+            "playlists": self._playlist_dicts(),
         }
         tmp = self.path.with_suffix(".tmp")
         try:
@@ -57,16 +62,57 @@ class Library:
 
     # -- favourites / history ----------------------------------------------
 
+    def _playlist_dicts(self) -> list[dict]:
+        return [
+            {"name": name, "tracks": [t.to_dict() for t in tracks]}
+            for name, tracks in self._playlists.items()
+        ]
+
     def snapshot(self) -> dict:
         with self._lock:
             return {
                 "favorites": [t.to_dict() for t in self._favorites],
                 "history": [t.to_dict() for t in self._history],
+                "playlists": self._playlist_dicts(),
             }
 
     def tracks(self) -> list[Track]:
         with self._lock:
-            return self._favorites + self._history
+            out = self._favorites + self._history
+            for tracks in self._playlists.values():
+                out = out + tracks
+            return out
+
+    # -- playlists -------------------------------------------------------------
+
+    @staticmethod
+    def _playlist_name(name: str) -> str:
+        name = " ".join(str(name).split())
+        if not 1 <= len(name) <= 60:
+            raise ValueError("Der Playlist-Name muss 1 bis 60 Zeichen lang sein.")
+        return name
+
+    def playlist_add(self, name: str, track: Track) -> None:
+        """Append a track to a playlist, creating the playlist if needed."""
+        name = self._playlist_name(name)
+        with self._lock:
+            tracks = self._playlists.setdefault(name, [])
+            if all(t.id != track.id for t in tracks):
+                tracks.append(track)
+            self._save()
+
+    def playlist_remove(self, name: str, video_id: str) -> None:
+        name = self._playlist_name(name)
+        with self._lock:
+            if name in self._playlists:
+                self._playlists[name] = [t for t in self._playlists[name] if t.id != video_id]
+                self._save()
+
+    def playlist_delete(self, name: str) -> None:
+        name = self._playlist_name(name)
+        with self._lock:
+            self._playlists.pop(name, None)
+            self._save()
 
     def set_favorite(self, track: Track, on: bool) -> None:
         with self._lock:

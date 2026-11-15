@@ -22,7 +22,8 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; }
   body { background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, sans-serif;
-         overscroll-behavior-y: contain; }
+         overscroll-behavior-y: contain; -webkit-user-select: none; user-select: none; }
+  input { -webkit-user-select: text; user-select: text; }
   button, input, select { font: inherit; color: inherit; }
   button { cursor: pointer; border: 0; background: none; padding: 0; }
   svg { width: 24px; height: 24px; fill: currentColor; display: block; }
@@ -174,6 +175,34 @@
   .track .icon-btn { width: 40px; }
   .thumb .dur.live { background: #dc2626; font-weight: 700; letter-spacing: .04em; }
 
+  .top { position: sticky; }
+  .suggest { position: absolute; left: 16px; right: 16px; top: 100%; margin-top: -4px; z-index: 6;
+             background: var(--raised); border: 1px solid var(--line); border-radius: 14px;
+             box-shadow: 0 10px 30px rgba(0, 0, 0, .18); overflow: hidden; }
+  .suggestion { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+                padding: 0 14px; min-height: 46px; }
+  .suggestion:active { background: var(--soft); }
+  .suggestion svg { flex: none; width: 18px; height: 18px; color: var(--muted); }
+  .suggestion span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden;
+                     text-overflow: ellipsis; }
+  .label .tools { display: flex; gap: 8px; }
+  .fav { display: inline-block; vertical-align: -2px; margin-right: 4px; color: var(--accent); }
+  .fav svg { width: 14px; height: 14px; }
+  .menu-item { display: flex; align-items: center; gap: 16px; width: 100%; text-align: left;
+               min-height: 52px; padding: 0 4px; border-radius: 10px; }
+  .menu-item:active { background: var(--soft); }
+  .menu-item svg { flex: none; color: var(--muted); }
+  #menuTitle { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #plForm { display: flex; gap: 8px; margin-top: 14px; }
+  #plForm input { flex: 1; min-width: 0; height: 46px; border-radius: 12px; padding: 0 14px;
+                  border: 1px solid var(--line); background: var(--card); outline: none; }
+  #plForm input:focus { border-color: var(--accent); }
+  .handle { touch-action: none; cursor: grab; color: var(--muted); }
+  .track.dragging { background: var(--soft); box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+                    position: relative; z-index: 1; }
+  .track.drop-before { box-shadow: 0 -3px 0 0 var(--accent); }
+  .track.drop-after { box-shadow: 0 3px 0 0 var(--accent); }
+
   /* --- toast + volume overlay ------------------------------------------- */
   #toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
            bottom: calc(205px + env(safe-area-inset-bottom)); max-width: min(92vw, 520px);
@@ -217,6 +246,9 @@
   <symbol id="i-star-o" viewBox="0 0 24 24"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></symbol>
   <symbol id="i-rooms" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4 4h7a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.5 4.5a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5zm0 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM14 7h6a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-6zm3 4.2a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 6.3a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></symbol>
+  <symbol id="i-drag" viewBox="0 0 24 24"><path d="M20 9H4v2h16V9zM4 15h16v-2H4v2z"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.9 3.9L9 12H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3zm-1 5v5l4.25 2.52.77-1.28-3.52-2.09V8z"/></symbol>
   <symbol id="i-note" viewBox="0 0 24 24"><path d="M12 3v10.600a4 4 0 1 0 2 3.400V7h4V3z"/></symbol>
 </svg>
 
@@ -243,9 +275,14 @@
         <svg><use href="#i-close"/></svg>
       </button>
     </form>
+    <div class="suggest" id="suggest" hidden></div>
   </div>
 
   <section id="home">
+    <div id="plBox" hidden>
+      <div class="label">Playlists</div>
+      <div class="chips" id="playlists"></div>
+    </div>
     <div id="favBox" hidden>
       <div class="label">Favoriten</div>
       <ul class="tracklist" id="favorites"></ul>
@@ -261,7 +298,8 @@
     <div class="hint" id="welcome">
       <strong>Was möchtest du hören?</strong>
       Suche nach einem Titel oder füge einen YouTube-Link ein.
-      Antippen spielt sofort, das Plus reiht ein, der Stern merkt den Titel.
+      Antippen spielt sofort, das Plus reiht ein. Über die drei Punkte merkst du Titel
+      als Favorit oder sammelst sie in Playlists.
     </div>
   </section>
 
@@ -273,8 +311,14 @@
 
   <section id="resultsBox" hidden>
     <div class="label"><span id="count"></span>
-      <button class="pill primary" id="all" hidden>Alle abspielen</button></div>
+      <span class="tools">
+        <button class="pill" id="delPlaylist" hidden>Löschen</button>
+        <button class="pill" id="shuffleAll" hidden>Zufällig</button>
+        <button class="pill primary" id="all" hidden>Alle abspielen</button>
+      </span></div>
     <ul class="tracklist" id="results"></ul>
+    <div class="hint" id="emptyList" hidden>Diese Playlist ist noch leer. Füge Titel über die
+      drei Punkte neben einem Titel hinzu.</div>
   </section>
   <div class="hint" id="searching" hidden><strong>Suche …</strong></div>
 </main>
@@ -286,7 +330,7 @@
     <div class="now">
       <div class="noart" id="noart"><svg><use href="#i-note"/></svg></div>
       <img id="art" alt="" hidden>
-      <div class="meta">
+      <div class="meta" id="nowMeta">
         <div class="title" id="nowTitle">Nichts in Wiedergabe</div>
         <div class="sub" id="nowSub">&nbsp;</div>
       </div>
@@ -312,7 +356,7 @@
   <header>
     <h2>Warteschlange</h2>
     <button class="pill" id="clearQueue">Leeren</button>
-    <button class="icon-btn" id="closeQueue" aria-label="Schließen"><svg><use href="#i-close"/></svg></button>
+    <button class="icon-btn" data-close aria-label="Schließen"><svg><use href="#i-close"/></svg></button>
   </header>
   <div class="opts">
     <button class="pill" id="optShuffle" aria-pressed="false">Zufall</button>
@@ -337,12 +381,31 @@
 <div class="sheet" id="roomSheet" role="dialog" aria-label="Räume" hidden>
   <header>
     <h2>Räume</h2>
-    <button class="icon-btn" id="closeRooms" aria-label="Schließen"><svg><use href="#i-close"/></svg></button>
+    <button class="icon-btn" data-close aria-label="Schließen"><svg><use href="#i-close"/></svg></button>
   </header>
   <div class="body">
     <div class="sub" style="white-space:normal;margin-bottom:6px">Angehakte Räume spielen gemeinsam.
       Die Regler stellen jeden Raum einzeln ein.</div>
     <div id="rooms"></div>
+  </div>
+</div>
+
+<div class="sheet" id="menuSheet" role="dialog" aria-label="Aktionen" hidden>
+  <header>
+    <h2 id="menuTitle"></h2>
+    <button class="icon-btn" data-close aria-label="Schließen"><svg><use href="#i-close"/></svg></button>
+  </header>
+  <div class="body">
+    <div id="menuItems"></div>
+    <div id="plChooser" hidden>
+      <div class="label" style="margin-top:0">Playlist wählen</div>
+      <div class="chips" id="plChoices"></div>
+      <form id="plForm">
+        <input id="plName" placeholder="Neue Playlist" maxlength="60" autocomplete="off"
+               aria-label="Name der neuen Playlist" enterkeyhint="done">
+        <button class="pill primary">Anlegen</button>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -357,10 +420,13 @@ const $ = (id) => document.getElementById(id);
 const VOLUME_STEP = 2;  // per press of the phone's volume keys
 
 let results = [];
-let library = {favorites: [], history: []};
+let view = {kind: 'home'};   // 'home' | 'search' | 'playlist' (+ name)
+let library = {favorites: [], history: [], playlists: []};
 let status = null;        // last /api/status answer
 let statusAt = 0;         // when it arrived (ms)
 let seeking = false;
+let dragging = false;
+let offline = 0;          // failed status polls in a row
 let volume = null;        // what the slider shows; null until known
 let volumeTouched = 0;    // ignore server values briefly after a local change
 let volumeWanted = null, volumeSending = false;
@@ -421,14 +487,58 @@ function el(tag, cls, text) {
 const speaker = () => $('speaker').value;
 const isUrl = (text) => /^https?:\/\//i.test(text.trim());
 
-// ---- rooms -----------------------------------------------------------------
+// ---- navigation: the back button closes sheets and leaves result lists --------
+
+const here = () => (history.state && history.state.kind) || 'home';
+const SHEETS = ['sheet', 'roomSheet', 'menuSheet'];
+
+function hideSheets() {
+  SHEETS.forEach((id) => { $(id).hidden = true; });
+  $('scrim').hidden = true;
+  $('sleepChoices').hidden = true;
+  document.body.classList.remove('sheet-open');
+}
+
+function openSheet(id) {
+  hideSheets();
+  $(id).hidden = $('scrim').hidden = false;
+  document.body.classList.add('sheet-open');
+  if (here() !== 'sheet') history.pushState({kind: 'sheet'}, '');
+}
+
+function closeSheet() {
+  if (here() === 'sheet') history.back(); else hideSheets();
+}
+
+function enterResults() {
+  if (here() !== 'results') history.pushState({kind: 'results'}, '');
+}
+
+function leaveResults() {
+  if (here() === 'results') history.back(); else showHome();
+}
+
+window.addEventListener('popstate', () => {
+  hideSheets();
+  if (here() === 'home') showHome();
+});
+
+$('scrim').onclick = closeSheet;
+document.querySelectorAll('[data-close]').forEach((b) => { b.onclick = closeSheet; });
+
+// ---- rooms -------------------------------------------------------------------
+
+// Lets the Android app know which room its lock-screen controls belong to.
+function tellApp() {
+  try { if (window.SonosytApp && speaker()) window.SonosytApp.setSpeaker(speaker()); } catch (e) {}
+}
 
 async function loadSpeakers(refresh) {
   let list = [];
   try {
     list = await api('/api/speakers' + (refresh ? '?refresh=1' : ''));
   } catch (e) { toast(e.message, true); }
-  const saved = store('speaker');
+  const saved = speaker() || store('speaker');
   $('speaker').replaceChildren(...list.map((s) => {
     const o = el('option', '', s.group.length > 1 ? `${s.name} (+${s.group.length - 1})` : s.name);
     o.value = s.name;
@@ -436,15 +546,10 @@ async function loadSpeakers(refresh) {
   }));
   if (list.some((s) => s.name === saved)) $('speaker').value = saved;
   $('noSpeakers').hidden = list.length > 0;
-  $('home').hidden = !list.length || !$('resultsBox').hidden;
+  $('home').hidden = !list.length || view.kind !== 'home';
   $('player').hidden = !list.length;
   tellApp();
   await refreshStatus();
-}
-
-// Lets the Android app know which room its lock-screen controls belong to.
-function tellApp() {
-  try { if (window.SonosytApp && speaker()) window.SonosytApp.setSpeaker(speaker()); } catch (e) {}
 }
 
 $('speaker').onchange = () => {
@@ -455,54 +560,116 @@ $('speaker').onchange = () => {
 };
 $('retry').onclick = () => loadSpeakers(true);
 
-// ---- search ------------------------------------------------------------------
-
-async function loadLibrary() {
-  try { library = await api('/api/library'); } catch (e) { return; }
-  renderHome();
-  syncStars();
-}
+// ---- library: favourites, history, playlists -------------------------------------
 
 const isFavorite = (id) => library.favorites.some((t) => t.id === id);
+const playlist = (name) => library.playlists.find((p) => p.name === name);
 
-function syncStars() {
-  document.querySelectorAll('.tracklist .star').forEach((b) => {
-    const on = isFavorite(b.closest('.track').dataset.id);
-    b.classList.toggle('on', on);
-    b.firstChild.firstChild.setAttribute('href', on ? '#i-star' : '#i-star-o');
-    b.setAttribute('aria-pressed', on);
-  });
+function applyLibrary(data) {
+  library = {favorites: [], history: [], playlists: [], ...data};
+  if (view.kind === 'playlist') {
+    const current = playlist(view.name);
+    if (!current) return leaveResults();
+    results = current.tracks;
+    renderResults();
+  } else if (view.kind === 'search') {
+    renderResults();
+  }
+  renderHome();
+}
+
+async function loadLibrary() {
+  try { applyLibrary(await api('/api/library')); } catch (e) { /* keep what we have */ }
 }
 
 async function toggleFavorite(t) {
+  const on = !isFavorite(t.id);
   try {
-    library = await api('/api/favorite', {id: t.id, favorite: !isFavorite(t.id)});
-    toast(isFavorite(t.id) ? 'Zu den Favoriten hinzugefügt' : 'Aus den Favoriten entfernt');
-  } catch (e) { return toast(e.message, true); }
-  renderHome();
-  syncStars();
+    applyLibrary(await api('/api/favorite', {id: t.id, favorite: on}));
+    toast(on ? 'Zu den Favoriten hinzugefügt' : 'Aus den Favoriten entfernt');
+  } catch (e) { toast(e.message, true); }
+}
+
+async function editPlaylist(name, op, t) {
+  try {
+    applyLibrary(await api('/api/playlist', {name, op, id: t && t.id}));
+    return true;
+  } catch (e) { toast(e.message, true); return false; }
 }
 
 function renderHome() {
+  $('plBox').hidden = !library.playlists.length;
+  $('playlists').replaceChildren(...library.playlists.map((p) => {
+    const b = el('button', 'pill', `${p.name} · ${p.tracks.length}`);
+    b.onclick = () => openPlaylist(p.name);
+    return b;
+  }));
   $('favBox').hidden = !library.favorites.length;
   $('favorites').replaceChildren(...library.favorites.map(trackRow));
   const history = library.history.filter((t) => !isFavorite(t.id)).slice(0, 8);
   $('histBox').hidden = !history.length;
   $('history').replaceChildren(...history.map(trackRow));
-  renderRecent();
-  markCurrent();
-}
-
-function renderRecent() {
   const recent = store('recent') || [];
   $('recentBox').hidden = !recent.length;
-  $('welcome').hidden = recent.length > 0 || library.favorites.length > 0 || library.history.length > 0;
   $('recent').replaceChildren(...recent.map((term) => {
     const b = el('button', 'pill', term);
     b.onclick = () => { $('q').value = term; search(); };
     return b;
   }));
+  $('welcome').hidden = recent.length > 0 || library.favorites.length > 0
+    || library.history.length > 0 || library.playlists.length > 0;
+  markCurrent();
 }
+
+function showHome() {
+  view = {kind: 'home'};
+  results = [];
+  $('q').value = '';
+  $('clear').hidden = true;
+  hideSuggest();
+  $('resultsBox').hidden = true;
+  $('searching').hidden = true;
+  $('home').hidden = !$('noSpeakers').hidden;
+  renderHome();
+}
+
+function showResults(label, withAll) {
+  $('home').hidden = true;
+  $('searching').hidden = true;
+  $('count').textContent = label;
+  $('all').hidden = !withAll;
+  $('shuffleAll').hidden = !withAll;
+  $('delPlaylist').hidden = view.kind !== 'playlist';
+  resetDelete();
+  $('resultsBox').hidden = false;
+  renderResults();
+  enterResults();
+}
+
+function openPlaylist(name) {
+  const p = playlist(name);
+  if (!p) return;
+  view = {kind: 'playlist', name};
+  results = p.tracks;
+  $('q').value = '';
+  $('clear').hidden = true;
+  showResults(name, p.tracks.length > 0);
+  window.scrollTo(0, 0);
+}
+
+let deleteArmed = 0;
+function resetDelete() { deleteArmed = 0; $('delPlaylist').textContent = 'Löschen'; }
+$('delPlaylist').onclick = async () => {
+  if (Date.now() - deleteArmed > 4000) {   // first tap arms, second tap deletes
+    deleteArmed = Date.now();
+    $('delPlaylist').textContent = 'Wirklich löschen?';
+    return setTimeout(() => { if (Date.now() - deleteArmed >= 4000) resetDelete(); }, 4100);
+  }
+  const name = view.name;
+  if (await editPlaylist(name, 'delete')) toast(`Playlist „${name}“ gelöscht`);
+};
+
+// ---- search ------------------------------------------------------------------------
 
 function remember(term) {
   if (isUrl(term)) return;
@@ -511,38 +678,84 @@ function remember(term) {
   store('recent', recent.slice(0, 8));
 }
 
-function showHome() {
-  results = [];
-  $('resultsBox').hidden = true;
-  $('searching').hidden = true;
-  $('home').hidden = !$('noSpeakers').hidden;
-  renderHome();
-}
-
 async function search() {
   const term = $('q').value.trim();
   $('clear').hidden = !term;
-  if (!term) return showHome();
+  hideSuggest();
+  suggestSeq++;
+  if (!term) return leaveResults();
   $('q').blur();
   $('home').hidden = true;
   $('resultsBox').hidden = true;
   $('searching').hidden = false;
+  let found;
   try {
-    results = await api('/api/search?q=' + encodeURIComponent(term));
+    found = await api('/api/search?q=' + encodeURIComponent(term));
   } catch (e) {
     $('searching').hidden = true;
-    showHome();
+    if (view.kind === 'home') showHome(); else $('resultsBox').hidden = false;
     return toast(e.message, true);
   }
-  $('searching').hidden = true;
-  if (!results.length) { showHome(); return toast('Nichts gefunden.', true); }
+  if (!found.length) {
+    $('searching').hidden = true;
+    if (view.kind === 'home') { showHome(); $('q').value = term; $('clear').hidden = false; }
+    else $('resultsBox').hidden = false;
+    return toast('Nichts gefunden.', true);
+  }
   remember(term);
-  $('count').textContent = results.length === 1 ? '1 Treffer' : `${results.length} Treffer`;
-  $('all').hidden = !(isUrl(term) && results.length > 1);
-  $('resultsBox').hidden = false;
-  renderResults();
-  return results;
+  view = {kind: 'search'};
+  results = found;
+  showResults(found.length === 1 ? '1 Treffer' : `${found.length} Treffer`,
+              isUrl(term) && found.length > 1);
+  window.scrollTo(0, 0);
+  return found;
 }
+
+// Suggestions while typing: matching earlier searches first, then YouTube's.
+let suggestSeq = 0, suggestTimer;
+function hideSuggest() { $('suggest').hidden = true; }
+
+async function updateSuggest() {
+  const term = $('q').value.trim();
+  if (term.length < 2 || isUrl(term)) return hideSuggest();
+  const seq = ++suggestSeq;
+  let remote = [];
+  try { remote = await api('/api/suggest?q=' + encodeURIComponent(term)); } catch (e) {}
+  if (seq !== suggestSeq || $('q').value.trim() !== term) return;
+  const lower = term.toLowerCase();
+  const own = (store('recent') || []).filter((r) => r.toLowerCase().includes(lower) && r.toLowerCase() !== lower);
+  const seen = new Set();
+  const list = [...own.map((text) => ({text, own: true})), ...remote.map((text) => ({text}))]
+    .filter((s) => !seen.has(s.text.toLowerCase()) && seen.add(s.text.toLowerCase()))
+    .slice(0, 7);
+  $('suggest').replaceChildren(...list.map((s) => {
+    const b = el('button', 'suggestion');
+    b.type = 'button';
+    b.append(icon(s.own ? 'history' : 'search'), el('span', '', s.text));
+    b.onclick = () => { $('q').value = s.text; search(); };
+    return b;
+  }));
+  $('suggest').hidden = !list.length;
+}
+
+$('form').onsubmit = (e) => { e.preventDefault(); search(); };
+$('q').oninput = () => {
+  $('clear').hidden = !$('q').value;
+  clearTimeout(suggestTimer);
+  if (!$('q').value.trim()) { hideSuggest(); suggestSeq++; return; }
+  suggestTimer = setTimeout(updateSuggest, 180);
+};
+$('q').onfocus = () => { if ($('q').value.trim()) updateSuggest(); };
+$('clear').onclick = () => {
+  $('q').value = ''; $('clear').hidden = true; hideSuggest(); suggestSeq++;
+  if (view.kind === 'search') leaveResults();
+  $('q').focus();
+};
+document.addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('.top')) { hideSuggest(); suggestSeq++; }
+});
+
+// ---- track rows ---------------------------------------------------------------------
 
 function trackRow(t) {
   const li = el('li', 'track');
@@ -557,29 +770,38 @@ function trackRow(t) {
   if (t.live) thumb.append(el('span', 'dur live', 'LIVE'));
   else if (t.duration) thumb.append(el('span', 'dur', fmt(t.duration)));
   const meta = el('div', 'meta');
-  meta.append(el('div', 'title', t.title), el('div', 'sub', t.uploader || ''));
+  const sub = el('div', 'sub');
+  if (isFavorite(t.id)) { const mark = el('span', 'fav'); mark.append(icon('star')); sub.append(mark); }
+  sub.append(t.uploader || '');
+  meta.append(el('div', 'title', t.title), sub);
   main.append(thumb, meta);
-  main.onclick = () => play([t.id], false, li);
+  main.onclick = () => play([t.id], 'now', li);
   const add = el('button', 'icon-btn');
   add.setAttribute('aria-label', `${t.title} zur Warteschlange hinzufügen`);
   add.append(icon('plus'));
-  add.onclick = () => play([t.id], true, li);
-  const star = el('button', 'icon-btn star');
-  star.setAttribute('aria-label', `${t.title} als Favorit merken`);
-  star.append(icon(isFavorite(t.id) ? 'star' : 'star-o'));
-  star.classList.toggle('on', isFavorite(t.id));
-  star.onclick = () => toggleFavorite(t);
-  li.append(main, star, add);
+  add.onclick = () => play([t.id], 'queue', li);
+  const more = el('button', 'icon-btn');
+  more.setAttribute('aria-label', `Weitere Aktionen für ${t.title}`);
+  more.append(icon('more'));
+  more.onclick = () => openMenu(t, li);
+  li.append(main, add, more);
   return li;
 }
 
 function renderResults() {
   $('results').replaceChildren(...results.map(trackRow));
+  if (view.kind === 'playlist') {
+    $('count').textContent = view.name;
+    $('all').hidden = $('shuffleAll').hidden = !results.length;
+    $('emptyList').hidden = results.length > 0;
+  } else {
+    $('emptyList').hidden = true;
+  }
   markCurrent();
 }
 
 function markCurrent() {
-  const playing = status && (status.state === 'PLAYING' || status.state === 'TRANSITIONING');
+  const playing = isPlaying();
   document.querySelectorAll('.tracklist .track').forEach((li) => {
     const current = !!status && status.video_id === li.dataset.id;
     li.classList.toggle('current', current);
@@ -598,23 +820,77 @@ function markCurrent() {
   });
 }
 
-$('form').onsubmit = (e) => { e.preventDefault(); search(); };
-$('q').oninput = () => {
-  $('clear').hidden = !$('q').value;
-  if (!$('q').value) showHome();
+$('all').onclick = () => play(results.map((t) => t.id), 'now');
+$('shuffleAll').onclick = () => {
+  const ids = results.map((t) => t.id);
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  play(ids, 'now');
 };
-$('clear').onclick = () => { $('q').value = ''; $('clear').hidden = true; showHome(); $('q').focus(); };
-$('all').onclick = () => play(results.map((t) => t.id), false);
 
-// ---- playing -------------------------------------------------------------------
+// ---- track menu -----------------------------------------------------------------------
 
-async function play(ids, queue, row) {
+function menuItem(name, label, action) {
+  const b = el('button', 'menu-item');
+  b.append(icon(name), el('span', '', label));
+  b.onclick = action;
+  return b;
+}
+
+function openMenu(t, row) {
+  $('menuTitle').textContent = t.title;
+  const act = (fn) => () => { closeSheet(); fn(); };
+  const items = [
+    menuItem('play', 'Jetzt abspielen', act(() => play([t.id], 'now', row))),
+    menuItem('next', 'Als Nächstes spielen', act(() => play([t.id], 'next', row))),
+    menuItem('plus', 'Ans Ende der Warteschlange', act(() => play([t.id], 'queue', row))),
+    menuItem(isFavorite(t.id) ? 'star' : 'star-o',
+             isFavorite(t.id) ? 'Aus den Favoriten entfernen' : 'Zu den Favoriten',
+             act(() => toggleFavorite(t))),
+    menuItem('queue', 'Zu einer Playlist hinzufügen', () => {
+      $('menuItems').hidden = true;
+      $('plChooser').hidden = false;
+    }),
+  ];
+  if (view.kind === 'playlist') {
+    const name = view.name;
+    items.push(menuItem('close', `Aus „${name}“ entfernen`, act(async () => {
+      if (await editPlaylist(name, 'remove', t)) toast(`Aus „${name}“ entfernt`);
+    })));
+  }
+  $('menuItems').replaceChildren(...items);
+  $('menuItems').hidden = false;
+  $('plChooser').hidden = true;
+  $('plName').value = '';
+  const addTo = async (name) => {
+    closeSheet();
+    if (await editPlaylist(name, 'add', t)) toast(`Zu „${name.trim()}“ hinzugefügt`);
+  };
+  $('plChoices').replaceChildren(...library.playlists.map((p) => {
+    const b = el('button', 'pill', p.name);
+    b.onclick = () => addTo(p.name);
+    return b;
+  }));
+  $('plForm').onsubmit = (e) => {
+    e.preventDefault();
+    if ($('plName').value.trim()) addTo($('plName').value);
+  };
+  openSheet('menuSheet');
+}
+
+// ---- playing ----------------------------------------------------------------------------
+
+async function play(ids, mode, row) {
   if (!speaker()) return toast('Kein Lautsprecher ausgewählt.', true);
+  if (!ids.length) return;
   if (row) { row.classList.add('busy'); markCurrent(); }
   try {
-    const r = await api('/api/play', {speaker: speaker(), ids, queue});
+    const r = await api('/api/play', {speaker: speaker(), ids, mode});
     const n = r.queued.length;
-    if (queue) toast(n > 1 ? `${n} Titel eingereiht` : 'Zur Warteschlange hinzugefügt');
+    if (mode === 'queue') toast(n > 1 ? `${n} Titel eingereiht` : 'Zur Warteschlange hinzugefügt');
+    else if (mode === 'next') toast('Wird als Nächstes gespielt');
     else toast(n > 1 ? `${n} Titel – Wiedergabe startet` : `Spielt in ${speaker()}`);
   } catch (e) { toast(e.message, true); }
   if (row) row.classList.remove('busy');
@@ -623,15 +899,17 @@ async function play(ids, queue, row) {
   setTimeout(refreshStatus, 1500);
 }
 
-async function control(action, value) {
+async function control(action, value, to) {
   if (!speaker()) return;
   try {
-    await api('/api/control', {speaker: speaker(), action, value});
+    await api('/api/control', {speaker: speaker(), action, value, to});
   } catch (e) { toast(e.message, true); }
   setTimeout(refreshStatus, 400);
 }
 
-const isPlaying = () => !!status && (status.state === 'PLAYING' || status.state === 'TRANSITIONING');
+function isPlaying() {
+  return !!status && (status.state === 'PLAYING' || status.state === 'TRANSITIONING');
+}
 
 $('toggle').onclick = () => {
   const next = isPlaying() ? 'pause' : 'play';
@@ -683,19 +961,29 @@ function paint() {
 }
 
 $('art').onerror = () => { $('art').hidden = true; $('noart').hidden = false; };
+$('nowMeta').onclick = () => openQueue();
 
 async function refreshStatus() {
   if (!speaker() || document.hidden) return;
+  let fresh;
   try {
-    status = await api('/api/status?speaker=' + encodeURIComponent(speaker()));
-    statusAt = Date.now();
-    if (Date.now() - volumeTouched > 3000) showVolume(status.volume);
-    paint();
-    if (!$('sheet').hidden) loadQueue();
-  } catch (e) { /* speaker unreachable: keep the last state */ }
+    fresh = await api('/api/status?speaker=' + encodeURIComponent(speaker()));
+  } catch (e) {
+    // Only a failed connection counts; a server answer with an error does not.
+    if (e instanceof TypeError && ++offline === 3) {
+      toast('Server nicht erreichbar. Bist du im Heim-WLAN?', true);
+    }
+    return;
+  }
+  offline = 0;
+  status = fresh;
+  statusAt = Date.now();
+  if (Date.now() - volumeTouched > 3000) showVolume(status.volume);
+  paint();
+  if (!$('sheet').hidden && !dragging) loadQueue();
 }
 
-// ---- volume ----------------------------------------------------------------------
+// ---- volume ------------------------------------------------------------------------------
 
 function showVolume(value) {
   volume = value;
@@ -739,12 +1027,13 @@ window.sonosytVolumeKey = (direction) => {
   hudTimer = setTimeout(() => { $('hud').className = ''; }, 1500);
 };
 
-// ---- queue -----------------------------------------------------------------------
+// ---- queue -------------------------------------------------------------------------------
 
 async function loadQueue(fresh) {
   let items = [];
   try { items = await api('/api/queue?speaker=' + encodeURIComponent(speaker())); }
   catch (e) { return toast(e.message, true); }
+  if (dragging) return;
   $('queueEmpty').hidden = items.length > 0;
   $('clearQueue').hidden = !items.length;
   const current = status ? status.queue_position : 0;
@@ -761,31 +1050,79 @@ async function loadQueue(fresh) {
     }
     const meta = el('div', 'meta');
     meta.append(el('div', 'title', t.title || 'Unbekannter Titel'), el('div', 'sub', t.artist));
-    main.append(el('span', 'num', String(i + 1)), thumb, meta);
+    main.append(thumb, meta);
     main.onclick = () => control('play_index', i);
     const remove = el('button', 'icon-btn');
     remove.setAttribute('aria-label', `${t.title} aus der Warteschlange entfernen`);
     remove.append(icon('close'));
     remove.onclick = async () => { li.remove(); await control('remove', i); loadQueue(); };
-    li.append(main, remove);
+    const handle = el('button', 'icon-btn handle');
+    handle.setAttribute('aria-label', `${t.title} verschieben`);
+    handle.append(icon('drag'));
+    enableDrag(handle, li, i);
+    li.append(main, remove, handle);
     return li;
   }));
   const now = $('queue').querySelector('.current');
   if (now && fresh) now.scrollIntoView({block: 'center'});
 }
 
-function toggleQueue(open) {
-  $('sheet').hidden = $('scrim').hidden = !open;
-  document.body.classList.toggle('sheet-open', open);
-  $('sleepChoices').hidden = true;
-  if (open) { $('queue').replaceChildren(); loadQueue(true); }
+// Drag a queue row by its handle. The row follows the finger, a line shows where
+// it will land, and the new order is sent when it is dropped. Rows are not moved
+// in the page while dragging: that would make the browser drop the touch.
+function enableDrag(handle, li, index) {
+  handle.onpointerdown = (down) => {
+    down.preventDefault();
+    handle.setPointerCapture(down.pointerId);
+    dragging = true;
+    li.classList.add('dragging');
+    const scroller = $('queue').closest('.body');
+    const others = [...$('queue').children].filter((r) => r !== li);
+    const startY = down.clientY, startScroll = scroller.scrollTop;
+    let target = index;
+    const clearMarks = () => others.forEach((r) => r.classList.remove('drop-before', 'drop-after'));
+    handle.onpointermove = (move) => {
+      const edge = scroller.getBoundingClientRect();
+      if (move.clientY < edge.top + 48) scroller.scrollTop -= 14;
+      else if (move.clientY > edge.bottom - 48) scroller.scrollTop += 14;
+      li.style.transform = `translateY(${move.clientY - startY + scroller.scrollTop - startScroll}px)`;
+      target = others.findIndex((r) => {
+        const box = r.getBoundingClientRect();
+        return move.clientY < box.top + box.height / 2;
+      });
+      if (target === -1) target = others.length;
+      clearMarks();
+      if (target !== index && others.length) {
+        if (target < others.length) others[target].classList.add('drop-before');
+        else others[others.length - 1].classList.add('drop-after');
+      }
+    };
+    handle.onpointerup = handle.onpointercancel = async (up) => {
+      handle.onpointermove = handle.onpointerup = handle.onpointercancel = null;
+      clearMarks();
+      li.classList.remove('dragging');
+      li.style.transform = '';
+      if (up.type === 'pointerup' && target !== index) {
+        // Show the new order at once; the speaker confirms it right after.
+        $('queue').insertBefore(li, others[target] || null);
+        await control('move', index, target);
+      }
+      dragging = false;
+      await refreshStatus();
+      loadQueue();
+    };
+  };
 }
-$('openQueue').onclick = () => toggleQueue(true);
-$('closeQueue').onclick = () => toggleQueue(false);
-$('scrim').onclick = () => { toggleQueue(false); toggleRooms(false); };
-$('clearQueue').onclick = async () => { await control('clear'); toggleQueue(false); toast('Warteschlange geleert'); };
 
-// ---- playback options --------------------------------------------------------------
+function openQueue() {
+  $('queue').replaceChildren();
+  openSheet('sheet');
+  loadQueue(true);
+}
+$('openQueue').onclick = openQueue;
+$('clearQueue').onclick = async () => { await control('clear'); closeSheet(); toast('Warteschlange geleert'); };
+
+// ---- playback options -----------------------------------------------------------------------
 
 function paintOptions() {
   const s = status || {};
@@ -817,7 +1154,7 @@ document.querySelectorAll('#sleepChoices button').forEach((b) => {
   };
 });
 
-// ---- rooms -------------------------------------------------------------------------
+// ---- rooms sheet ----------------------------------------------------------------------------
 
 async function loadRooms() {
   let rooms = [];
@@ -861,17 +1198,12 @@ function roomRow(room) {
   return row;
 }
 
-function toggleRooms(open) {
-  $('roomSheet').hidden = $('scrim').hidden = !open;
-  document.body.classList.toggle('sheet-open', open);
-  if (open) { $('rooms').replaceChildren(); loadRooms(); }
-}
-$('openRooms').onclick = () => toggleRooms(true);
-$('closeRooms').onclick = () => toggleRooms(false);
+$('openRooms').onclick = () => { $('rooms').replaceChildren(); openSheet('roomSheet'); loadRooms(); };
 
-// ---- start -----------------------------------------------------------------------
+// ---- start -----------------------------------------------------------------------------------
 
 if (/sonosyt-app/.test(navigator.userAgent)) $('settings').hidden = false;
+if (here() !== 'home') history.replaceState(null, '');  // a reload starts at the home view
 renderHome();
 loadLibrary();
 setInterval(refreshStatus, 3000);
@@ -888,7 +1220,7 @@ document.addEventListener('visibilitychange', refreshStatus);
   const found = await search();
   // One shared video and a chosen room: just play it.
   if (found && found.length === 1 && speaker()) {
-    play([found[0].id], false, document.querySelector('#results .track'));
+    play([found[0].id], 'now', document.querySelector('#results .track'));
   }
 })();
 </script>

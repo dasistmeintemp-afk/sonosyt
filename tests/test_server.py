@@ -24,6 +24,8 @@ class FakeSonos:
         self.enqueued = []
         self.controls = []
         self.now = {"state": "PLAYING"}
+        self.items = [{"title": "Song", "artist": "Chan", "album_art": "", "video_id": VID,
+                       "live": False}]
 
     def speakers(self, refresh=False):
         return [{"name": "Küche", "ip": "10.0.0.5", "group": ["Küche"]}]
@@ -33,16 +35,16 @@ class FakeSonos:
             raise SonosError(f"nicht gefunden: {name}")
         return FakeDevice()
 
-    def enqueue(self, speaker, items, play_now):
-        self.enqueued.append((speaker, items, play_now))
+    def enqueue(self, speaker, items, mode):
+        self.enqueued.append((speaker, items, mode))
         return 1
 
-    def control(self, speaker, action, value=None):
-        self.controls.append((speaker, action, value))
+    def control(self, speaker, action, value=None, to=None):
+        self.controls.append((speaker, action, value) + ((to,) if to is not None else ()))
 
     def queue(self, speaker):
         self.get(speaker)
-        return [{"title": "Song", "artist": "Chan", "album_art": ""}]
+        return list(self.items)
 
     def set_volume(self, speaker, volume, single=False):
         self.controls.append((speaker, "volume", volume) + (("single",) if single else ()))
@@ -70,6 +72,7 @@ def srv(tmp_path, monkeypatch):
     app = App(
         Transcoder(tmp_path, source_cmd=tone_cmd()), sonos, port=0,
         lookup=lambda q: catalog.get(q, []), prefetch_wait=30,
+        suggest=lambda q: [q + " live", q + " remix"],
         related=lambda vid: [
             Track("llllllllll1", "Live", live=True), Track("bbbbbbbbbbb", "Other"),
             Track("ddddddddddd", "Fresh"),
@@ -112,8 +115,8 @@ def test_play_search_term_takes_first_hit_and_prefetches(srv):
     base, app, sonos = srv
     status, _, body = call(base + "/api/play", {"speaker": "Küche", "query": "beatles"})
     assert status == 200, body
-    speaker, items, play_now = sonos.enqueued[0]
-    assert (speaker, play_now) == ("Küche", True)
+    speaker, items, mode = sonos.enqueued[0]
+    assert (speaker, mode) == ("Küche", "now")
     assert [(t.id, uri) for t, uri in items] == [(VID, f"http://10.0.0.2:{app.port}/stream/{VID}.mp3")]
     assert app.transcoder.cached(VID)  # converted before Sonos was told to play
 
@@ -125,8 +128,8 @@ def test_play_playlist_url_queues_everything(srv):
         {"speaker": "Küche", "query": "https://www.youtube.com/playlist?list=PL1", "queue": True},
     )
     assert status == 200
-    _, items, play_now = sonos.enqueued[0]
-    assert [t.id for t, _ in items] == [VID, "bbbbbbbbbbb"] and play_now is False
+    _, items, mode = sonos.enqueued[0]
+    assert [t.id for t, _ in items] == [VID, "bbbbbbbbbbb"] and mode == "queue"
 
 
 def test_play_by_ids_and_errors(srv):
@@ -214,8 +217,8 @@ def test_autoplay_queues_a_fresh_related_track_once(srv):
     app.library.played([Track("bbbbbbbbbbb", "Other")])  # heard recently: skipped
 
     assert app.autoplay_once("Küche").id == "ddddddddddd"  # not the live one, not the recent one
-    speaker, items, play_now = sonos.enqueued[-1]
-    assert items[0][1].endswith("/stream/ddddddddddd.mp3") and play_now is False
+    speaker, items, mode = sonos.enqueued[-1]
+    assert items[0][1].endswith("/stream/ddddddddddd.mp3") and mode == "queue"
     assert app.autoplay_once("Küche") is None  # same track still playing: nothing new
     assert len(sonos.enqueued) == 1
 
@@ -275,3 +278,55 @@ def test_live_stream_is_piped_and_ffmpeg_stops_with_the_listener(srv):
     app.remember([Track("llllllllll1", "Live", live=True)])
     assert call(base + "/api/play", {"speaker": "Küche", "ids": ["llllllllll1"]})[0] == 200
     assert sonos.enqueued[-1][1][0][1].endswith("/live/llllllllll1.mp3")
+
+
+def test_suggest_playlists_modes_and_move(srv):
+    base, app, sonos = srv
+    assert json.loads(call(base + "/api/suggest?q=fred")[2]) == ["fred live", "fred remix"]
+
+    call(base + "/api/search?q=beatles")
+    status, _, body = call(base + "/api/playlist", {"name": "  Party   Mix ", "id": VID})
+    assert status == 200
+    assert [(p["name"], [t["id"] for t in p["tracks"]]) for p in json.loads(body)["playlists"]] == [
+        ("Party Mix", [VID])]
+    call(base + "/api/playlist", {"name": "Party Mix", "id": VID})  # no duplicates
+    call(base + "/api/playlist", {"name": "Party Mix", "id": "bbbbbbbbbbb"})
+    from sonosyt.library import Library
+    saved = Library(app.library.path).snapshot()["playlists"]  # survives a restart
+    assert [t["id"] for t in saved[0]["tracks"]] == [VID, "bbbbbbbbbbb"]
+    body = call(base + "/api/playlist", {"name": "Party Mix", "op": "remove", "id": VID})[2]
+    assert [t["id"] for t in json.loads(body)["playlists"][0]["tracks"]] == ["bbbbbbbbbbb"]
+    assert call(base + "/api/playlist", {"name": "", "id": VID})[0] == 400
+    assert call(base + "/api/playlist", {"name": "x", "op": "explode"})[0] == 400
+    body = call(base + "/api/playlist", {"name": "Party Mix", "op": "delete"})[2]
+    assert json.loads(body)["playlists"] == []
+
+    assert call(base + "/api/play", {"speaker": "Küche", "ids": [VID], "mode": "next"})[0] == 200
+    assert sonos.enqueued[-1][2] == "next"
+    assert call(base + "/api/play", {"speaker": "Küche", "ids": [VID], "mode": "x"})[0] == 400
+    assert call(base + "/api/control", {"speaker": "Küche", "action": "move", "value": 3, "to": 0})[0] == 200
+    assert sonos.controls[-1] == ("Küche", "move", 3, 0)
+
+
+def test_search_and_playing_queue_convert_ahead(srv):
+    import time
+
+    base, app, sonos = srv
+    app.lookup = lambda q: [Track(VID, "Song", "Chan", 200), Track("llllllllll1", "Live", live=True),
+                            Track("bbbbbbbbbbb", "Long", "Chan", 7200)]
+    call(base + "/api/search?q=anything")
+    deadline = time.time() + 30
+    while not app.transcoder.cached(VID) and time.time() < deadline:
+        time.sleep(0.1)
+    assert app.transcoder.cached(VID)  # likely pick converted before anyone tapped
+    assert not app.transcoder.cached("bbbbbbbbbbb")  # two-hour video: not speculatively
+
+    sonos.items = [{"video_id": VID, "live": False}, {"video_id": "bbbbbbbbbbb", "live": False}]
+    sonos.now = {"state": "PLAYING", "video_id": VID, "queue_position": 1, "queue_length": 2}
+    app._active["Küche"] = time.monotonic()
+    app.monitor_once()
+    deadline = time.time() + 30
+    while not app.transcoder.cached("bbbbbbbbbbb") and time.time() < deadline:
+        time.sleep(0.1)
+    assert app.transcoder.cached("bbbbbbbbbbb")  # the upcoming track is ready in time
+    assert app.prefetch_next("Küche", sonos.now) is None  # asked once per track

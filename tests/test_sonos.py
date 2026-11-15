@@ -62,6 +62,11 @@ class FakeSpeaker:
     def remove_from_queue(self, index):
         self.queue.pop(index)
 
+    def move_in_queue(self, start, new_pos):
+        if not 0 <= new_pos < len(self.queue):
+            raise ValueError("out of range")
+        self.queue.insert(new_pos, self.queue.pop(start))
+
     def play_from_queue(self, index):
         self.calls.append(("play_from_queue", index))
 
@@ -118,7 +123,7 @@ def test_play_now_inserts_after_current_track_on_the_coordinator(setup):
     ctl, kitchen, living = setup
     kitchen.queue = ["a", "b", "c"]
     kitchen.position = "2"  # "b" is playing
-    assert ctl.enqueue("Wohnzimmer", ITEMS, play_now=True) == 3
+    assert ctl.enqueue("Wohnzimmer", ITEMS, "now") == 3
     assert titles(kitchen) == ["a", "b", "One", "Two", "c"] and living.queue == []
     assert kitchen.calls == [("play_from_queue", 2)]
 
@@ -130,7 +135,7 @@ def test_play_now_appends_when_not_playing_from_the_queue(setup):
         kitchen.position = position
         kitchen.queue = ["a"]
         kitchen.calls = []
-        assert ctl.enqueue("Küche", ITEMS[:1], play_now=True) == 2
+        assert ctl.enqueue("Küche", ITEMS[:1], "now") == 2
         assert titles(kitchen) == ["a", "One"]
         assert kitchen.calls == [("play_from_queue", 1)]
 
@@ -139,10 +144,10 @@ def test_queue_only_appends_without_touching_playback(setup):
     ctl, kitchen, _ = setup
     kitchen.queue = ["a", "b"]
     kitchen.position = "1"
-    assert ctl.enqueue("Küche", ITEMS, play_now=False) == 3
+    assert ctl.enqueue("Küche", ITEMS, "queue") == 3
     assert titles(kitchen) == ["a", "b", "One", "Two"] and kitchen.calls == []
     with pytest.raises(SonosError):
-        ctl.enqueue("Küche", [], play_now=True)
+        ctl.enqueue("Küche", [], "now")
 
 
 def test_control_seek_queue_and_status(setup):
@@ -151,11 +156,12 @@ def test_control_seek_queue_and_status(setup):
     ctl.control("Wohnzimmer", "seek", 3725)
     ctl.control("Wohnzimmer", "play_index", 4)
     assert kitchen.calls == ["pause", ("seek", "1:02:05"), ("play_from_queue", 4)]
-    ctl.enqueue("Küche", ITEMS, play_now=False)
+    ctl.enqueue("Küche", ITEMS, "queue")
     ctl.control("Küche", "remove", 0)
     assert ctl.queue("Wohnzimmer") == [{
         "title": "Two", "artist": "YouTube",
         "album_art": "https://i.ytimg.com/vi/bbbbbbbbbbb/hqdefault.jpg",
+        "video_id": "bbbbbbbbbbb", "live": False,
     }]
     with pytest.raises(SonosError):
         ctl.control("Küche", "explode")
@@ -261,3 +267,19 @@ def test_live_tracks_have_no_duration_and_are_recognised(setup):
     kitchen.get_current_track_info = lambda: {"uri": "http://h/live/ccccccccccc.mp3", "playlist_position": "1"}
     status = ctl.status("Küche")
     assert status["live"] is True and status["video_id"] == "ccccccccccc"
+
+
+def test_play_next_inserts_without_interrupting_and_queue_can_be_reordered(setup):
+    ctl, kitchen, _ = setup
+    kitchen.queue = ["a", "b", "c"]
+    kitchen.position = "1"
+    assert ctl.enqueue("Küche", ITEMS[:1], "next") == 2
+    assert titles(kitchen) == ["a", "One", "b", "c"] and kitchen.calls == []
+    ctl.control("Küche", "move", 3, 0)
+    assert titles(kitchen) == ["c", "a", "One", "b"]
+    ctl.control("Küche", "move", 0, 2)
+    assert titles(kitchen) == ["a", "One", "c", "b"]
+    with pytest.raises(SonosError):
+        ctl.control("Küche", "move", 0, 9)
+    with pytest.raises(SonosError):
+        ctl.enqueue("Küche", ITEMS, "sideways")

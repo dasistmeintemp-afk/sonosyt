@@ -6,6 +6,8 @@ import json
 import re
 import subprocess
 import sys
+import urllib.parse
+import urllib.request
 from dataclasses import asdict, dataclass
 
 VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
@@ -123,3 +125,19 @@ def related(video_id: str) -> list[Track]:
     """Videos YouTube would play after this one (its auto-generated mix)."""
     mix = f"{watch_url(video_id)}&list=RD{video_id}"
     return [t for t in _tracks(_extract(mix, playlist=True)) if t.id != video_id]
+
+
+def suggest(query: str, limit: int = 8) -> list[str]:
+    """Search suggestions as YouTube shows them while typing. Empty on any failure."""
+    query = query.strip()
+    if not query:
+        return []
+    url = "https://suggestqueries.google.com/complete/search?" + urllib.parse.urlencode(
+        {"client": "firefox", "ds": "yt", "ie": "utf-8", "oe": "utf-8", "q": query}
+    )
+    try:
+        with urllib.request.urlopen(url, timeout=3) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace"))
+        return [str(item) for item in data[1] if isinstance(item, str)][:limit]
+    except Exception:  # noqa: BLE001 - suggestions are a convenience only
+        return []
