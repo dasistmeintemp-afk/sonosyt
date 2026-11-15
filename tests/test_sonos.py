@@ -29,6 +29,7 @@ class FakeSpeaker:
         self.repeat = False
         self.sleep = None
         self.joined = "unset"
+        self.uid = "RINCON_" + ip.replace(".", "")
 
     def get_sleep_timer(self):
         return self.sleep
@@ -283,3 +284,59 @@ def test_play_next_inserts_without_interrupting_and_queue_can_be_reordered(setup
         ctl.control("Küche", "move", 0, 9)
     with pytest.raises(SonosError):
         ctl.enqueue("Küche", ITEMS, "sideways")
+
+
+def test_grouping_falls_back_to_the_websocket_api_when_upnp_is_refused(setup, monkeypatch):
+    import sonos_websocket
+
+    ctl, kitchen, living = setup
+    bath = FakeSpeaker("Bad", "10.0.0.7")
+    monkeypatch.setattr(ctl, "_discover", lambda: [living, kitchen, bath])
+    ctl.devices(refresh=True)
+
+    def refuse(master=None):
+        raise RuntimeError("UPnP Error 1001 received")
+
+    bath.join = bath.unjoin = refuse
+    sent = []
+    answer = {"success": True}
+
+    class FakeWebsocket:
+        def __init__(self, ip):
+            sent.append(("connect", ip))
+
+        async def connect(self):
+            pass
+
+        async def close(self):
+            sent.append("close")
+
+        async def get_household_id(self):
+            return "HH"
+
+        async def get_groups(self):
+            return [{"success": True}, {"groups": [
+                {"id": "G-other", "coordinatorId": "RINCON_x", "playerIds": ["RINCON_x"]},
+                {"id": "G-kitchen", "coordinatorId": kitchen.uid,
+                 "playerIds": [kitchen.uid, living.uid, bath.uid]},
+            ]}]
+
+        async def send_command(self, command, options=None):
+            sent.append((command, options))
+            return [answer, {"reason": "nope"}]
+
+    monkeypatch.setattr(sonos_websocket, "SonosWebsocket", FakeWebsocket)
+    ctl.group("Wohnzimmer", "Bad", True)
+    assert sent == [
+        ("connect", "10.0.0.5"),  # asked of the group's coordinator
+        ({"namespace": "groups:1", "command": "modifyGroupMembers", "householdId": "HH",
+          "groupId": "G-kitchen"}, {"playerIdsToAdd": [bath.uid]}),
+        "close",
+    ]
+    sent.clear()
+    ctl.group("Wohnzimmer", "Bad", False)
+    assert sent[1][1] == {"playerIdsToRemove": [bath.uid]}
+
+    answer["success"] = False  # both ways refused: a readable error, not a crash
+    with pytest.raises(SonosError, match="Bad lässt sich gerade nicht hinzufügen"):
+        ctl.group("Wohnzimmer", "Bad", True)
