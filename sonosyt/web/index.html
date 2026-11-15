@@ -208,6 +208,102 @@
   .update span { flex: 1; min-width: 0; font-size: .9375rem; }
   .update a { text-decoration: none; flex: none; }
 
+  /* --- motion -------------------------------------------------------------- */
+  @keyframes rise { from { transform: translateY(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .sheet { animation: rise .24s cubic-bezier(.2, .8, .2, 1); }
+  .scrim { animation: fade .2s; }
+  .tracklist .track, .rail > * { animation: fade .25s; }
+  .thumb, .mosaic { transition: transform .12s; }
+  .main:active .thumb, .pl-card:active .mosaic { transform: scale(.96); }
+  .transport button, .pill, .icon-btn { transition: transform .1s, background-color .15s; }
+  .transport button:active, .pill:active { transform: scale(.94); }
+  @media (prefers-reduced-motion: reduce) {
+    .sheet, .scrim, .player.expanded, .tracklist .track, .rail > * { animation: none; }
+  }
+
+  /* --- loading placeholders ------------------------------------------------- */
+  .skel { display: flex; gap: 12px; padding: 8px 0; align-items: center; }
+  .skel i { display: block; border-radius: 8px; background-size: 200% 100%;
+            background-image: linear-gradient(90deg, var(--soft) 25%, var(--line) 50%, var(--soft) 75%);
+            animation: shimmer 1.2s linear infinite; }
+  .skel .t { flex: none; width: 96px; aspect-ratio: 16/9; }
+  .skel .l { flex: 1; display: grid; gap: 8px; }
+  .skel .l i { height: 14px; }
+  .skel .l i:last-child { width: 55%; height: 12px; }
+
+  /* --- home rails -------------------------------------------------------------- */
+  .rail { display: flex; gap: 12px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 6px;
+          scroll-snap-type: x proximity; scrollbar-width: none; }
+  .rail::-webkit-scrollbar { display: none; }
+  .track.card { display: block; flex: none; width: 156px; margin: 0; padding: 0;
+                scroll-snap-align: start; scroll-margin-left: 16px; }
+  .track.card:active { background: none; }
+  .card .main { display: block; width: 100%; }
+  .card .thumb { width: 100%; border-radius: 12px; }
+  .card .foot { display: flex; align-items: flex-start; margin-top: 6px; }
+  .card .meta { flex: 1; }
+  .card .title { font-size: .875rem; line-height: 1.3; }
+  .card .sub { font-size: .8125rem; }
+  .card .icon-btn { width: 30px; height: 34px; margin-right: -8px; }
+  .card .icon-btn svg { width: 20px; height: 20px; }
+  .pl-card { flex: none; width: 124px; text-align: left; scroll-snap-align: start;
+             scroll-margin-left: 16px; }
+  .mosaic { display: grid; grid-template-columns: 1fr 1fr; width: 124px; aspect-ratio: 1;
+            border-radius: 12px; overflow: hidden; background: var(--soft); place-items: center;
+            color: var(--muted); }
+  .mosaic.one { grid-template-columns: 1fr; }
+  .mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .pl-card .title { font-size: .875rem; margin-top: 6px; -webkit-line-clamp: 1; }
+
+  /* --- full-screen player ---------------------------------------------------------- */
+  .np-only { display: none; }
+  #npBg { position: absolute; inset: -90px; z-index: -1; display: none; background-size: cover;
+          background-position: center; filter: blur(60px) saturate(1.5); opacity: .42; }
+  #nowMeta, #art, #noart { cursor: pointer; }
+  .player.expanded { top: 0; z-index: 15; border-top: 0; overflow: hidden; background: var(--bg);
+                     padding: calc(6px + env(safe-area-inset-top)) 24px calc(18px + env(safe-area-inset-bottom));
+                     animation: rise .26s cubic-bezier(.2, .8, .2, 1); }
+  .player.expanded #npBg { display: block; }
+  /* On the tinted backdrop, secondary text needs more weight to stay readable. */
+  .player.expanded { --muted: color-mix(in srgb, var(--text) 74%, transparent);
+                     --line: color-mix(in srgb, var(--text) 22%, transparent); }
+  .player.expanded .inner { height: 100%; max-width: 520px; display: flex; flex-direction: column; }
+  .player.expanded .np-only { display: flex; }
+  .player.expanded .now { display: contents; }
+  .player.expanded #npHead { order: 0; align-items: center; gap: 8px; height: 48px; margin: 0 -10px; }
+  .player.expanded #npRoom { flex: 1; text-align: center; font-weight: 600; font-size: .9375rem;
+                             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .player.expanded #art, .player.expanded #noart { order: 1; width: 100%; height: auto;
+      aspect-ratio: 16/9; border-radius: 18px; margin: auto 0 0; cursor: default;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .35); }
+  .player.expanded #art.square { aspect-ratio: 1; max-width: 300px; align-self: center; }
+  .player.expanded #noart svg { width: 64px; height: 64px; }
+  .player.expanded #nowMeta { order: 2; flex: none; margin: 26px 0 6px; cursor: default; }
+  .player.expanded #nowTitle { font-size: 1.375rem; line-height: 1.25; -webkit-line-clamp: 2; }
+  .player.expanded #nowSub { font-size: 1rem; margin-top: 2px; }
+  .player.expanded #seek { order: 3; height: 30px; margin-top: 6px; }
+  .player.expanded .times { order: 4; font-size: .8125rem; }
+  .player.expanded .transport { order: 5; justify-content: center; gap: 26px; margin: 12px 0 10px; }
+  .player.expanded .transport button { width: 60px; height: 60px; }
+  .player.expanded .transport button svg { width: 34px; height: 34px; }
+  .player.expanded .transport #toggle { width: 78px; height: 78px; }
+  .player.expanded .transport #toggle svg { width: 42px; height: 42px; }
+  .player.expanded .volume { order: 6; margin-top: 4px; }
+  .player.expanded #npExtras { order: 7; justify-content: space-between; gap: 8px; margin: 16px 0 auto; }
+  #npExtras button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+                     padding: 8px 4px; border-radius: 12px; font-size: .75rem; color: var(--muted); }
+  #npExtras button:active { background: var(--soft); }
+  #npExtras button[aria-pressed=true] { color: var(--accent); }
+  #npExtras button:disabled { opacity: .35; }
+  .player-open { overflow: hidden; }
+  .player-open #toast { bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .room-row.pending .check { border-color: var(--accent); background: none; }
+  .room-row.pending .check svg { visibility: hidden; }
+  .room-row.pending .check::after { content: ''; width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid var(--accent); border-top-color: transparent; animation: spin .7s linear infinite; }
+
   /* --- toast + volume overlay ------------------------------------------- */
   #toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
            bottom: calc(205px + env(safe-area-inset-bottom)); max-width: min(92vw, 520px);
@@ -254,6 +350,8 @@
   <symbol id="i-more" viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></symbol>
   <symbol id="i-drag" viewBox="0 0 24 24"><path d="M20 9H4v2h16V9zM4 15h16v-2H4v2z"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.9 3.9L9 12H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3zm-1 5v5l4.25 2.52.77-1.28-3.52-2.09V8z"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></symbol>
+  <symbol id="i-radio" viewBox="0 0 24 24"><path d="M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 2a6 6 0 0 0-1.76-4.24l-1.41 1.41a4 4 0 0 1 0 5.66l1.41 1.41A6 6 0 0 0 18 12zM7.76 7.76A6 6 0 0 0 6 12a6 6 0 0 0 1.76 4.24l1.41-1.41a4 4 0 0 1 0-5.66L7.76 7.760zM19.070 4.930l-1.410 1.410a8 8 0 0 1 0 11.320l1.410 1.410a10 10 0 0 0 0-14.140zM4.930 4.930a10 10 0 0 0 0 14.140l1.410-1.410a8 8 0 0 1 0-11.320L4.930 4.930z"/></symbol>
   <symbol id="i-note" viewBox="0 0 24 24"><path d="M12 3v10.600a4 4 0 1 0 2 3.400V7h4V3z"/></symbol>
 </svg>
 
@@ -290,17 +388,17 @@
   </div>
 
   <section id="home">
-    <div id="plBox" hidden>
-      <div class="label">Playlists</div>
-      <div class="chips" id="playlists"></div>
+    <div id="histBox" hidden>
+      <div class="label">Zuletzt gespielt</div>
+      <ul class="tracklist rail" id="history"></ul>
     </div>
     <div id="favBox" hidden>
       <div class="label">Favoriten</div>
-      <ul class="tracklist" id="favorites"></ul>
+      <ul class="tracklist rail" id="favorites"></ul>
     </div>
-    <div id="histBox" hidden>
-      <div class="label">Zuletzt gespielt</div>
-      <ul class="tracklist" id="history"></ul>
+    <div id="plBox" hidden>
+      <div class="label">Playlists</div>
+      <div class="rail" id="playlists"></div>
     </div>
     <div id="recentBox" hidden>
       <div class="label">Zuletzt gesucht</div>
@@ -331,11 +429,17 @@
     <div class="hint" id="emptyList" hidden>Diese Playlist ist noch leer. Füge Titel über die
       drei Punkte neben einem Titel hinzu.</div>
   </section>
-  <div class="hint" id="searching" hidden><strong>Suche …</strong></div>
+  <div id="searching" role="status" aria-label="Wird geladen" hidden></div>
 </main>
 
 <div class="player" id="player">
   <div class="inner">
+    <div id="npBg"></div>
+    <div class="np-only" id="npHead">
+      <button class="icon-btn" id="npClose" aria-label="Wiedergabe-Ansicht schließen"><svg><use href="#i-down"/></svg></button>
+      <span id="npRoom"></span>
+      <button class="icon-btn" id="npRooms" aria-label="Räume gruppieren und Lautstärke je Raum"><svg><use href="#i-rooms"/></svg></button>
+    </div>
     <input type="range" id="seek" min="0" max="1" value="0" disabled aria-label="Position im Titel">
     <div class="times"><span id="pos">&nbsp;</span><span id="dur">&nbsp;</span></div>
     <div class="now">
@@ -358,6 +462,12 @@
       <button class="queue-btn" id="openQueue" aria-label="Warteschlange öffnen">
         <svg><use href="#i-queue"/></svg>
       </button>
+    </div>
+    <div class="np-only" id="npExtras">
+      <button id="npFav" aria-pressed="false"><svg><use id="npFavIcon" href="#i-star-o"/></svg>Favorit</button>
+      <button id="npRelated"><svg><use href="#i-radio"/></svg>Ähnliche</button>
+      <button id="npPlaylist"><svg><use href="#i-plus"/></svg>Playlist</button>
+      <button id="npQueue"><svg><use href="#i-queue"/></svg>Warteschlange</button>
     </div>
   </div>
 </div>
@@ -438,6 +548,10 @@ let statusAt = 0;         // when it arrived (ms)
 let seeking = false;
 let dragging = false;
 let offline = 0;          // failed status polls in a row
+const SKELETON = '<div class="skel"><i class="t"></i><div class="l"><i></i><i></i></div></div>'.repeat(6);
+const thumbUrl = (id) => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
+function buzz() { try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) {} }
+function loading(on) { $('searching').innerHTML = on ? SKELETON : ''; $('searching').hidden = !on; }
 let volume = null;        // what the slider shows; null until known
 let volumeTouched = 0;    // ignore server values briefly after a local change
 let volumeWanted = null, volumeSending = false;
@@ -529,9 +643,30 @@ function leaveResults() {
   if (here() === 'results') history.back(); else showHome();
 }
 
+function expandPlayer() {
+  if ($('player').classList.contains('expanded')) return;
+  $('player').classList.add('expanded');
+  document.body.classList.add('player-open');
+  history.pushState({kind: 'player'}, '');
+}
+
+function collapsePlayer() {
+  $('player').classList.remove('expanded');
+  document.body.classList.remove('player-open');
+}
+
+// Runs fn once the full-screen player (and anything above it) has been left.
+function leavePlayer(fn) {
+  if (!$('player').classList.contains('expanded')) return fn();
+  const steps = here() === 'sheet' ? -2 : -1;
+  window.addEventListener('popstate', () => setTimeout(fn, 0), {once: true});
+  history.go(steps);
+}
+
 window.addEventListener('popstate', () => {
   hideSheets();
-  if (here() === 'home') showHome();
+  if (here() !== 'player' && here() !== 'sheet') collapsePlayer();
+  if (here() === 'home' && view.kind !== 'home') showHome();
 });
 
 $('scrim').onclick = closeSheet;
@@ -610,16 +745,12 @@ async function editPlaylist(name, op, t) {
 
 function renderHome() {
   $('plBox').hidden = !library.playlists.length;
-  $('playlists').replaceChildren(...library.playlists.map((p) => {
-    const b = el('button', 'pill', `${p.name} · ${p.tracks.length}`);
-    b.onclick = () => openPlaylist(p.name);
-    return b;
-  }));
+  $('playlists').replaceChildren(...library.playlists.map(playlistCard));
   $('favBox').hidden = !library.favorites.length;
-  $('favorites').replaceChildren(...library.favorites.map(trackRow));
-  const history = library.history.filter((t) => !isFavorite(t.id)).slice(0, 8);
+  $('favorites').replaceChildren(...library.favorites.map(trackCard));
+  const history = library.history.slice(0, 12);
   $('histBox').hidden = !history.length;
-  $('history').replaceChildren(...history.map(trackRow));
+  $('history').replaceChildren(...history.map(trackCard));
   const recent = store('recent') || [];
   $('recentBox').hidden = !recent.length;
   $('recent').replaceChildren(...recent.map((term) => {
@@ -632,6 +763,24 @@ function renderHome() {
   markCurrent();
 }
 
+function playlistCard(p) {
+  const card = el('button', 'pl-card');
+  card.setAttribute('aria-label', `Playlist ${p.name} öffnen`);
+  const covers = p.tracks.slice(0, 4);
+  const mosaic = el('div', 'mosaic' + (covers.length < 4 ? ' one' : ''));
+  const shown = covers.length < 4 ? covers.slice(0, 1) : covers;
+  if (!shown.length) mosaic.append(icon('queue'));
+  shown.forEach((t) => {
+    const img = el('img'); img.src = thumbUrl(t.id); img.alt = ''; img.loading = 'lazy';
+    img.onerror = () => img.remove();
+    mosaic.append(img);
+  });
+  card.append(mosaic, el('div', 'title', p.name),
+              el('div', 'sub', p.tracks.length === 1 ? '1 Titel' : `${p.tracks.length} Titel`));
+  card.onclick = () => openPlaylist(p.name);
+  return card;
+}
+
 function showHome() {
   view = {kind: 'home'};
   results = [];
@@ -639,14 +788,14 @@ function showHome() {
   $('clear').hidden = true;
   hideSuggest();
   $('resultsBox').hidden = true;
-  $('searching').hidden = true;
+  loading(false);
   $('home').hidden = !$('noSpeakers').hidden;
   renderHome();
 }
 
 function showResults(label, withAll) {
   $('home').hidden = true;
-  $('searching').hidden = true;
+  loading(false);
   $('count').textContent = label;
   $('all').hidden = !withAll;
   $('shuffleAll').hidden = !withAll;
@@ -698,17 +847,17 @@ async function search() {
   $('q').blur();
   $('home').hidden = true;
   $('resultsBox').hidden = true;
-  $('searching').hidden = false;
+  loading(true);
   let found;
   try {
     found = await api('/api/search?q=' + encodeURIComponent(term));
   } catch (e) {
-    $('searching').hidden = true;
+    loading(false);
     if (view.kind === 'home') showHome(); else $('resultsBox').hidden = false;
     return toast(e.message, true);
   }
   if (!found.length) {
-    $('searching').hidden = true;
+    loading(false);
     if (view.kind === 'home') { showHome(); $('q').value = term; $('clear').hidden = false; }
     else $('resultsBox').hidden = false;
     return toast('Nichts gefunden.', true);
@@ -720,6 +869,25 @@ async function search() {
               isUrl(term) && found.length > 1);
   window.scrollTo(0, 0);
   return found;
+}
+
+async function showRelated(t) {
+  $('q').value = ''; $('clear').hidden = true;
+  $('home').hidden = true;
+  $('resultsBox').hidden = true;
+  loading(true);
+  window.scrollTo(0, 0);
+  let found = [];
+  try { found = await api('/api/related?id=' + encodeURIComponent(t.id)); }
+  catch (e) { toast(e.message, true); }
+  if (!found.length) {
+    loading(false);
+    if (view.kind === 'home') showHome(); else $('resultsBox').hidden = false;
+    return toast('Keine ähnlichen Titel gefunden.', true);
+  }
+  view = {kind: 'related'};
+  results = found;
+  showResults(`Ähnlich wie „${t.title}“`, true);
 }
 
 // Suggestions while typing: matching earlier searches first, then YouTube's.
@@ -743,6 +911,7 @@ async function updateSuggest() {
     const b = el('button', 'suggestion');
     b.type = 'button';
     b.append(icon(s.own ? 'history' : 'search'), el('span', '', s.text));
+    b.onpointerdown = (e) => e.preventDefault();   // keep the keyboard from flickering
     b.onclick = () => { $('q').value = s.text; search(); };
     return b;
   }));
@@ -774,12 +943,7 @@ function trackRow(t) {
   const main = el('button', 'main');
   main.setAttribute('aria-label', `${t.title} abspielen`);
   const thumb = el('div', 'thumb');
-  const img = el('img'); img.src = t.thumbnail; img.alt = ''; img.loading = 'lazy';
-  img.onerror = () => img.remove();
-  const veil = el('div', 'veil');
-  thumb.append(img, veil);
-  if (t.live) thumb.append(el('span', 'dur live', 'LIVE'));
-  else if (t.duration) thumb.append(el('span', 'dur', fmt(t.duration)));
+  thumb.append(...thumbParts(t));
   const meta = el('div', 'meta');
   const sub = el('div', 'sub');
   if (isFavorite(t.id)) { const mark = el('span', 'fav'); mark.append(icon('star')); sub.append(mark); }
@@ -796,6 +960,37 @@ function trackRow(t) {
   more.append(icon('more'));
   more.onclick = () => openMenu(t, li);
   li.append(main, add, more);
+  return li;
+}
+
+function thumbParts(t) {
+  const img = el('img'); img.src = thumbUrl(t.id); img.alt = ''; img.loading = 'lazy';
+  img.onerror = () => img.remove();
+  const parts = [img, el('div', 'veil')];
+  if (t.live) parts.push(el('span', 'dur live', 'LIVE'));
+  else if (t.duration) parts.push(el('span', 'dur', fmt(t.duration)));
+  return parts;
+}
+
+// Compact card for the home rails: cover on top, title below.
+function trackCard(t) {
+  const li = el('li', 'track card');
+  li.dataset.id = t.id;
+  const main = el('button', 'main');
+  main.setAttribute('aria-label', `${t.title} abspielen`);
+  const thumb = el('div', 'thumb');
+  thumb.append(...thumbParts(t));
+  main.append(thumb);
+  main.onclick = () => play([t.id], 'now', li);
+  const foot = el('div', 'foot');
+  const meta = el('div', 'meta');
+  meta.append(el('div', 'title', t.title), el('div', 'sub', t.uploader || ''));
+  const more = el('button', 'icon-btn');
+  more.setAttribute('aria-label', `Weitere Aktionen für ${t.title}`);
+  more.append(icon('more'));
+  more.onclick = () => openMenu(t, li);
+  foot.append(meta, more);
+  li.append(main, foot);
   return li;
 }
 
@@ -850,7 +1045,7 @@ function menuItem(name, label, action) {
   return b;
 }
 
-function openMenu(t, row) {
+function openMenu(t, row, playlistsOnly) {
   $('menuTitle').textContent = t.title;
   const act = (fn) => () => { closeSheet(); fn(); };
   const items = [
@@ -864,6 +1059,7 @@ function openMenu(t, row) {
       $('menuItems').hidden = true;
       $('plChooser').hidden = false;
     }),
+    menuItem('radio', 'Ähnliche Titel anzeigen', act(() => leavePlayer(() => showRelated(t)))),
   ];
   if (view.kind === 'playlist') {
     const name = view.name;
@@ -872,8 +1068,8 @@ function openMenu(t, row) {
     })));
   }
   $('menuItems').replaceChildren(...items);
-  $('menuItems').hidden = false;
-  $('plChooser').hidden = true;
+  $('menuItems').hidden = !!playlistsOnly;
+  $('plChooser').hidden = !playlistsOnly;
   $('plName').value = '';
   const addTo = async (name) => {
     closeSheet();
@@ -897,6 +1093,7 @@ async function play(ids, mode, row) {
   if (!speaker()) return toast('Kein Lautsprecher ausgewählt.', true);
   if (!ids.length) return;
   if (row) { row.classList.add('busy'); markCurrent(); }
+  buzz();
   try {
     const r = await api('/api/play', {speaker: speaker(), ids, mode});
     const n = r.queued.length;
@@ -923,6 +1120,7 @@ function isPlaying() {
 }
 
 $('toggle').onclick = () => {
+  buzz();
   const next = isPlaying() ? 'pause' : 'play';
   if (status) { status.state = next === 'play' ? 'PLAYING' : 'PAUSED_PLAYBACK'; statusAt = Date.now(); }
   paint();
@@ -950,12 +1148,28 @@ function paint() {
   const has = !!(s && s.title);
   $('nowTitle').textContent = has ? s.title : 'Nichts in Wiedergabe';
   $('nowSub').textContent = has ? (s.artist || ' ') : ' ';
-  if (has && s.album_art) {
-    if ($('art').dataset.src !== s.album_art) { $('art').src = s.album_art; $('art').dataset.src = s.album_art; }
+  // Our own tracks get the sharp widescreen cover; anything else what Sonos reports.
+  const cover = !has ? '' : s.video_id ? `https://i.ytimg.com/vi/${s.video_id}/hq720.jpg` : s.album_art;
+  if (cover) {
+    if ($('art').dataset.want !== cover) {
+      $('art').dataset.want = cover;
+      $('art').dataset.fallback = s.video_id ? (s.album_art || '') : '';
+      $('art').src = cover;
+      $('npBg').style.backgroundImage = `url("${cover}")`;
+    }
+    $('art').classList.toggle('square', !s.video_id);
     $('art').hidden = false; $('noart').hidden = true;
   } else {
+    $('art').dataset.want = '';
+    $('npBg').style.backgroundImage = '';
     $('art').hidden = true; $('noart').hidden = false;
   }
+  $('npRoom').textContent = speaker();
+  const ours = !!(has && s.video_id);
+  const fav = ours && isFavorite(s.video_id);
+  $('npFav').disabled = $('npRelated').disabled = $('npPlaylist').disabled = !ours;
+  $('npFav').setAttribute('aria-pressed', fav);
+  $('npFavIcon').setAttribute('href', fav ? '#i-star' : '#i-star-o');
   $('toggleIcon').setAttribute('href', isPlaying() ? '#i-pause' : '#i-play');
   $('toggle').setAttribute('aria-label', isPlaying() ? 'Pause' : 'Wiedergabe');
   const seekable = has && s.duration > 0 && !s.live;
@@ -971,8 +1185,27 @@ function paint() {
   markCurrent();
 }
 
-$('art').onerror = () => { $('art').hidden = true; $('noart').hidden = false; };
-$('nowMeta').onclick = () => openQueue();
+$('art').onerror = () => {
+  const fallback = $('art').dataset.fallback;
+  if (fallback && $('art').src !== fallback) {   // no widescreen cover for this video
+    $('art').dataset.fallback = '';
+    $('art').src = fallback;
+    $('npBg').style.backgroundImage = `url("${fallback}")`;
+    return;
+  }
+  $('art').hidden = true; $('noart').hidden = false;
+};
+
+// ---- full-screen player ------------------------------------------------------------------
+
+const nowTrack = () => ({id: status.video_id, title: status.title, uploader: status.artist || ''});
+['nowMeta', 'art', 'noart'].forEach((id) => { $(id).onclick = expandPlayer; });
+$('npClose').onclick = () => { if (here() === 'player') history.back(); else collapsePlayer(); };
+$('npRooms').onclick = () => $('openRooms').onclick();
+$('npQueue').onclick = () => openQueue();
+$('npFav').onclick = async () => { buzz(); await toggleFavorite(nowTrack()); paint(); };
+$('npRelated').onclick = () => { const t = nowTrack(); leavePlayer(() => showRelated(t)); };
+$('npPlaylist').onclick = () => openMenu(nowTrack(), null, true);
 
 async function refreshStatus() {
   if (!speaker() || document.hidden) return;
@@ -1184,12 +1417,25 @@ function roomRow(room) {
   head.setAttribute('aria-label', room.selected ? `${room.name} (gewählter Raum)`
     : `${room.name} ${room.grouped ? 'aus der Gruppe nehmen' : 'zur Gruppe hinzufügen'}`);
   head.onclick = async () => {
+    const want = !room.grouped;
     head.disabled = true;
+    buzz();
+    row.classList.toggle('on', want);       // show the result at once ...
+    row.classList.add('pending');           // ... with a spinner until Sonos confirms it
+    let rooms = null;
     try {
-      await api('/api/group', {speaker: speaker(), room: room.name, join: !room.grouped});
+      rooms = await api('/api/group', {speaker: speaker(), room: room.name, join: want});
     } catch (e) { toast(e.message, true); }
-    // Sonos needs a moment until the new grouping is visible.
-    setTimeout(() => { loadRooms(); loadSpeakers(true); }, 1200);
+    // Sonos needs a moment until the new grouping is visible: look again a few times.
+    for (let i = 0; rooms && i < 8; i++) {
+      const now = rooms.find((r) => r.name === room.name);
+      if (now && now.grouped === want) break;
+      await new Promise((done) => setTimeout(done, 600));
+      try { rooms = await api('/api/rooms?speaker=' + encodeURIComponent(speaker())); } catch (e) {}
+    }
+    if (rooms && !$('roomSheet').hidden) $('rooms').replaceChildren(...rooms.map(roomRow));
+    else if (!rooms) loadRooms();
+    loadSpeakers(false);
   };
   const vol = el('div', 'vol');
   const slider = el('input'); slider.type = 'range'; slider.min = 0; slider.max = 100;

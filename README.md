@@ -64,6 +64,8 @@ Danach:
   Musik läuft, auch bei gesperrtem Bildschirm (bei gruppierten Räumen die der ganzen Gruppe).
 - **Benachrichtigung und Sperrbildschirm** zeigen den laufenden Titel mit Pause und
   Titel vor/zurück. Läuft 15 Minuten nichts, verschwindet die Benachrichtigung wieder.
+- **Große Wiedergabe-Ansicht:** Ein Tipp auf den laufenden Titel unten öffnet sie – mit Cover,
+  Spulen, Lautstärke, Favorit, ähnlichen Titeln und Playlist.
 - **Unten:** Spulen, Pause, Titel vor/zurück, Lautstärke und die Warteschlange (Titel am
   Griff rechts verschieben, antippen zum Springen). Dort gibt es
   auch Zufall, Wiederholen, Autoplay (nach dem letzten Titel läuft passende Musik weiter)

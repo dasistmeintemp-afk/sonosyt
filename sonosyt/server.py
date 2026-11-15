@@ -265,6 +265,12 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/search":
             q = query.get("q", [""])[0]
             return self._guard(lambda: [t.to_dict() for t in self.app.search(q, prefetch=True)])
+        if url.path == "/api/related":
+            def related():
+                tracks = self.app.related(youtube.watch_id(query.get("id", [""])[0]))
+                self.app.remember(tracks)
+                return [t.to_dict() for t in tracks]
+            return self._guard(related)
         if url.path == "/api/suggest":
             q = query.get("q", [""])[0]
             return self._guard(lambda: self.app.suggest(q[:200]))

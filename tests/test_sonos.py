@@ -334,8 +334,11 @@ def test_grouping_falls_back_to_the_websocket_api_when_upnp_is_refused(setup, mo
         "close",
     ]
     sent.clear()
+    attempts = []
+    bath.unjoin = lambda: attempts.append("upnp")
     ctl.group("Wohnzimmer", "Bad", False)
     assert sent[1][1] == {"playerIdsToRemove": [bath.uid]}
+    assert attempts == []  # remembered: the refused UPnP attempt is skipped from now on
 
     answer["success"] = False  # both ways refused: a readable error, not a crash
     with pytest.raises(SonosError, match="Bad lässt sich gerade nicht hinzufügen"):

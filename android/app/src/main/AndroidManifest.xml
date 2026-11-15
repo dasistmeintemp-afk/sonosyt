@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Short tick when a button in the web UI is pressed (navigator.vibrate). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- The sonosyt server speaks plain HTTP inside the home network. -->
     <application
