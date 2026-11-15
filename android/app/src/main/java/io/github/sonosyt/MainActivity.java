@@ -12,6 +12,7 @@ import android.view.KeyEvent;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
@@ -127,6 +128,45 @@ public class MainActivity extends Activity {
                 }
             });
         }
+
+        /** While the video is showing, the screen should not switch itself off. */
+        @JavascriptInterface
+        public void keepScreenOn(final boolean on) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (on) {
+                        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    } else {
+                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    }
+                }
+            });
+        }
+
+        /** Step of the volume keys, also used by the lock-screen controls. */
+        @JavascriptInterface
+        public void setVolumeStep(int step) {
+            prefs.edit().putInt(PlaybackService.PREF_VOLUME_STEP,
+                    Math.max(1, Math.min(10, step))).apply();
+        }
+
+        /** The web UI's theme can differ from the system's: match the system bars. */
+        @JavascriptInterface
+        public void setDark(final boolean dark) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    getWindow().setStatusBarColor(dark ? 0xFF171614 : 0xFFF6F5F2);
+                    getWindow().setNavigationBarColor(dark ? 0xFF2A2824 : 0xFFFFFFFF);
+                    View decor = getWindow().getDecorView();
+                    int light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                            | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                    int flags = decor.getSystemUiVisibility();
+                    decor.setSystemUiVisibility(dark ? flags & ~light : flags | light);
+                }
+            });
+        }
     }
 
     @Override
@@ -148,6 +188,8 @@ public class MainActivity extends Activity {
         WebView view = new WebView(this);
         view.getSettings().setJavaScriptEnabled(true);
         view.getSettings().setDomStorageEnabled(true); // remembers the chosen speaker
+        // The muted video in the player view starts by itself, without a tap on it.
+        view.getSettings().setMediaPlaybackRequiresUserGesture(false);
         // Tells the web UI it runs inside the app (settings button, update hint).
         String version = "0";
         try {

@@ -49,10 +49,10 @@ public class PlaybackService extends Service {
     static final String PREFS = "sonosyt";
     static final String PREF_SERVER = "server_url";
     static final String PREF_SPEAKER = "speaker";
+    static final String PREF_VOLUME_STEP = "volume_step";
 
     private static final String CHANNEL = "playback";
     private static final int NOTIFICATION_ID = 1;
-    private static final int VOLUME_STEP = 2;
     private static final long POLL_PLAYING_MS = 3000;
     private static final long POLL_IDLE_MS = 10000;
     /** Nothing playing for this long: the notification goes away. */
@@ -139,7 +139,8 @@ public class PlaybackService extends Service {
             @Override
             public void onAdjustVolume(int direction) {
                 if (direction == 1 || direction == -1) {
-                    changeVolume(getCurrentVolume() + direction * VOLUME_STEP);
+                    changeVolume(getCurrentVolume()
+                            + direction * prefs.getInt(PREF_VOLUME_STEP, 2));
                 }
             }
 

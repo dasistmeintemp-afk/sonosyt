@@ -282,6 +282,27 @@ class Transcoder:
             if job.error is None:
                 self._evict(keep=job.final)
 
+    def cache_info(self) -> dict:
+        files = [p for p in self.cache_dir.glob("*.mp3") if p.is_file()]
+        size = 0
+        for path in files:
+            try:
+                size += path.stat().st_size
+            except OSError:
+                pass
+        return {"files": len(files), "bytes": size, "max_bytes": self.max_cache_bytes}
+
+    def clear_cache(self) -> int:
+        """Delete all finished conversions. Returns how many were removed."""
+        removed = 0
+        for path in self.cache_dir.glob("*.mp3"):
+            try:
+                path.unlink()
+                removed += 1
+            except OSError:
+                pass  # e.g. being served right now on some systems
+        return removed
+
     def _evict(self, keep: Path) -> None:
         """Delete least recently used files until the cache fits its limit."""
         files = []
