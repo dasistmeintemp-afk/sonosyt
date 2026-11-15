@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.sonosyt'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.sonosyt'
+        minSdk 26
+        targetSdk 34
+        // CI passes increasing numbers so newer APKs install over older ones.
+        versionCode((System.getenv('VERSION_CODE') ?: '1') as Integer)
+        versionName System.getenv('VERSION_NAME') ?: '0.1.0'
+    }
+
+    signingConfigs {
+        // Fixed key checked into the repo: every build has the same signature,
+        // so updates install without uninstalling first. Sideloading only.
+        shared {
+            storeFile rootProject.file('sonosyt.keystore')
+            storePassword 'sonosyt'
+            keyAlias 'sonosyt'
+            keyPassword 'sonosyt'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.shared
+        }
+        release {
+            signingConfig signingConfigs.shared
+            minifyEnabled false
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+    }
+}

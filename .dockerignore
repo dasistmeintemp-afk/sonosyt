@@ -1,0 +1,5 @@
+.git
+.venv
+android
+tests
+**/__pycache__

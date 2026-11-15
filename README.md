@@ -3,41 +3,68 @@
 Spielt den Ton von YouTube-Videos auf Sonos-Lautsprechern ab.
 
 Sonos kann YouTube-Streams nicht direkt abspielen. `sonosyt` ist deshalb ein kleiner Server
-für dein Heimnetz: Er holt die Tonspur per [yt-dlp](https://github.com/yt-dlp/yt-dlp),
+für dein Heimnetz mit passender Android-App: Er holt die Tonspur per [yt-dlp](https://github.com/yt-dlp/yt-dlp),
 wandelt sie mit ffmpeg in MP3 um und reicht sie den Lautsprechern über HTTP. Gesteuert wird
 über eine Web-Oberfläche (auch am Handy) oder die Kommandozeile.
 
 > Sonos-Lautsprecher geben nur Ton wieder – das Videobild wird nicht übertragen.
 
-## Voraussetzungen
+## Überblick
 
-- Ein Rechner, der **im selben Netzwerk wie die Sonos-Lautsprecher** läuft, solange Musik
-  spielt (PC, Raspberry Pi, NAS …)
-- Python 3.10 oder neuer
-- ffmpeg (`sudo apt install ffmpeg` bzw. `brew install ffmpeg`)
+- **Server** (dieses Repository): läuft dauerhaft auf einem Gerät im Heimnetz, z. B. einem NAS.
+- **Android-App**: Fernbedienung für den Server. Sie zeigt dessen Oberfläche und nimmt Links
+  entgegen, die du in der YouTube-App über „Teilen" an sie schickst.
 
-## Installation
+## Server installieren
+
+Der Server muss **im selben Netzwerk wie die Sonos-Lautsprecher** laufen, solange Musik spielt.
+
+### Auf einem NAS mit Docker (empfohlen)
+
+```sh
+git clone https://github.com/dasistmeintemp-afk/sonosyt.git
+cd sonosyt
+docker compose up -d --build
+```
+
+Der Container nutzt das Host-Netzwerk (nötig für die Sonos-Suche) und startet nach einem
+Neustart des NAS von selbst wieder. Aktualisieren: `git pull && docker compose up -d --build`.
+
+### Direkt mit Python
+
+Benötigt Python 3.10+ und ffmpeg (`sudo apt install ffmpeg` bzw. `brew install ffmpeg`).
 
 ```sh
 git clone https://github.com/dasistmeintemp-afk/sonosyt.git
 cd sonosyt
 python3 -m venv .venv
 .venv/bin/pip install .
-```
-
-## Benutzung
-
-Server starten:
-
-```sh
 .venv/bin/sonosyt serve
 ```
 
-Dann im Browser `http://<IP-des-Rechners>:8327/` öffnen, Lautsprecher wählen, YouTube-Link
+## Android-App
+
+1. Auf dem Handy die Seite
+   [Releases](https://github.com/dasistmeintemp-afk/sonosyt/releases/latest) öffnen und
+   `sonosyt.apk` herunterladen
+   ([Direktlink](https://github.com/dasistmeintemp-afk/sonosyt/releases/latest/download/sonosyt.apk)).
+2. Die Datei öffnen und die Installation erlauben („Aus dieser Quelle zulassen").
+3. App starten und **Im Netzwerk suchen** antippen – oder die Adresse des NAS eingeben
+   (z. B. `192.168.1.10`).
+
+Danach: in der App suchen und abspielen, oder in der YouTube-App **Teilen → sonosyt** wählen.
+Den Server ändern kannst du über das Menü (⋮) oben rechts.
+
+Die APK wird bei jeder Änderung unter `android/` automatisch von GitHub Actions gebaut.
+Selbst bauen: `cd android && ./gradlew assembleRelease` (benötigt das Android SDK).
+
+## Benutzung ohne App
+
+Im Browser `http://<IP-des-Servers>:8327/` öffnen, Lautsprecher wählen, YouTube-Link
 einfügen oder Suchbegriff eingeben und auf **Abspielen** tippen. Playlist-Links liefern alle
 Titel der Playlist.
 
-Alternativ über die Kommandozeile (der Server muss laufen):
+Über die Kommandozeile (der Server muss laufen):
 
 ```sh
 sonosyt speakers                                   # Lautsprecher auflisten
@@ -76,7 +103,11 @@ sehen, überspringen und pausieren.
 - Der Server hat **keine Anmeldung**: Jeder im Netzwerk kann ihn bedienen. Nicht ins Internet
   freigeben.
 - Funktioniert ein Video plötzlich nicht mehr, hilft meist ein Update von yt-dlp:
+  `docker compose build --no-cache && docker compose up -d` bzw.
   `.venv/bin/pip install -U yt-dlp`.
+- Die APK ist mit einem Schlüssel signiert, der offen in diesem Repository liegt
+  (`android/sonosyt.keystore`), damit Updates sich ohne Deinstallation einspielen lassen.
+  Installiere deshalb nur APKs aus diesem Repository.
 - Bitte die Nutzungsbedingungen von YouTube und das Urheberrecht beachten.
 
 ## Entwicklung

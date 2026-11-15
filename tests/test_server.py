@@ -83,6 +83,8 @@ def test_ui_and_search(srv):
     base, _, _ = srv
     status, headers, body = call(base + "/")
     assert status == 200 and b"YouTube" in body and "text/html" in headers["Content-Type"]
+    status, _, body = call(base + "/api/ping")
+    assert status == 200 and json.loads(body)["app"] == "sonosyt"
     status, _, body = call(base + "/api/search?q=beatles")
     assert status == 200
     assert json.loads(body)[0] == {
