@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import socket
 import threading
 import time
 
 from .youtube import Track
+
+
+log = logging.getLogger(__name__)
 
 
 class SonosError(Exception):
@@ -262,10 +266,17 @@ class SonosController:
         other = self.get(room)
         if other.ip_address == dev.ip_address:
             raise SonosError("Der gewählte Raum gehört immer dazu.")
-        if join:
-            other.join(self._coordinator(dev))
-        else:
-            other.unjoin()
+        try:
+            if join:
+                other.join(self._coordinator(dev))
+            else:
+                other.unjoin()
+        except Exception as exc:  # noqa: BLE001 - the speaker refused
+            log.warning("grouping %s with %s failed: %s", room, speaker, exc)
+            raise SonosError(
+                f"{room} lässt sich gerade nicht {'hinzufügen' if join else 'herausnehmen'}"
+                f" – der Lautsprecher hat abgelehnt ({exc})."
+            ) from exc
 
     def status(self, speaker: str) -> dict:
         dev = self.get(speaker)
