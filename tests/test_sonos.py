@@ -104,3 +104,15 @@ def test_didl_metadata():
     assert 'protocolInfo="http-get:*:audio/mpeg:*"' in xml
     assert "https://i.ytimg.com/vi/aaaaaaaaaaa/hqdefault.jpg" in xml
     assert item.resources[0].uri == "http://h/stream/aaaaaaaaaaa.mp3"
+
+
+def test_fixed_ip_expands_to_all_rooms(monkeypatch):
+    import soco
+
+    kitchen, living = FakeSpeaker("Küche", "10.0.0.5"), FakeSpeaker("Wohnzimmer", "10.0.0.6")
+    kitchen.visible_zones = {kitchen, living}
+    dead = FakeSpeaker("?", "10.0.0.9")
+    type(dead).visible_zones = property(lambda self: (_ for _ in ()).throw(OSError("unreachable")))
+    monkeypatch.setattr(soco, "SoCo", lambda ip: {"10.0.0.5": kitchen, "10.0.0.9": dead}[ip])
+    ctl = SonosController(ips=["10.0.0.5"])
+    assert [s["name"] for s in ctl.speakers()] == ["Küche", "Wohnzimmer"]
