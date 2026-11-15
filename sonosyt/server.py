@@ -40,7 +40,9 @@ class App:
         prefetch_wait: float = 8.0,
         library: Library | None = None,
         related=youtube.related,
+        suggest=youtube.suggest,
     ):
+        self.suggest = suggest
         self.transcoder = transcoder
         self.sonos = sonos
         self.port = port
@@ -52,6 +54,8 @@ class App:
         self._tracks: dict[str, Track] = {}
         self._lock = threading.Lock()
         self._extended: dict[str, str] = {}  # speaker -> video autoplay last handled
+        self._active: dict[str, float] = {}  # speaker -> when it was last played to
+        self._next_checked: dict[str, tuple] = {}
         self.remember(self.library.tracks())
 
     # -- tracks --------------------------------------------------------------
@@ -63,9 +67,13 @@ class App:
             while len(self._tracks) > 2000:
                 self._tracks.pop(next(iter(self._tracks)))
 
-    def search(self, query: str) -> list[Track]:
+    def search(self, query: str, prefetch: bool = False) -> list[Track]:
         tracks = self.lookup(query)
         self.remember(tracks)
+        if prefetch:
+            # Convert the most likely picks already, so a tap starts at once.
+            likely = [t.id for t in tracks if not t.live and t.duration and t.duration <= 1200]
+            self.transcoder.prefetch(likely[:3])
         return tracks
 
     def track(self, video_id: str) -> Track:
@@ -84,7 +92,7 @@ class App:
 
     # -- playing -------------------------------------------------------------
 
-    def play(self, speaker: str, ids: list[str] | None, query: str | None, play_now: bool) -> dict:
+    def play(self, speaker: str, ids: list[str] | None, query: str | None, mode: str = "now") -> dict:
         if ids:
             tracks = [self.track(i) for i in ids]
         else:
@@ -95,13 +103,16 @@ class App:
         if not tracks:
             raise YouTubeError("Nichts gefunden.")
         device = self.sonos.get(speaker)
-        if play_now and not tracks[0].live:
+        if mode == "now" and not tracks[0].live:
             # Short videos finish converting within seconds; then Sonos gets a
             # complete file (with duration and seeking) instead of a live stream.
             self.transcoder.ensure(tracks[0].id).done.wait(self.prefetch_wait)
+        # The next few are converted ahead; later ones follow as playback gets there.
+        self.transcoder.prefetch([t.id for t in tracks if not t.live][:4])
         items = [(t, self.stream_url(t, device.ip_address)) for t in tracks]
-        position = self.sonos.enqueue(speaker, items, play_now)
+        position = self.sonos.enqueue(speaker, items, mode)
         self.library.played(tracks)
+        self._active[speaker] = time.monotonic()
         return {"queued": [t.to_dict() for t in tracks], "position": position}
 
     def status(self, speaker: str) -> dict:
@@ -111,9 +122,9 @@ class App:
 
     # -- autoplay ------------------------------------------------------------
 
-    def autoplay_once(self, speaker: str) -> Track | None:
+    def autoplay_once(self, speaker: str, status: dict | None = None) -> Track | None:
         """If the last queued track is playing, queue what YouTube would play next."""
-        status = self.sonos.status(speaker)
+        status = status or self.sonos.status(speaker)
         video_id = status.get("video_id")
         if (
             status.get("state") != "PLAYING"
@@ -134,22 +145,54 @@ class App:
         self.remember([choice])
         device = self.sonos.get(speaker)
         self.transcoder.ensure(choice.id)  # convert ahead, so it starts seamlessly
-        self.sonos.enqueue(speaker, [(choice, self.stream_url(choice, device.ip_address))], False)
+        self.sonos.enqueue(
+            speaker, [(choice, self.stream_url(choice, device.ip_address))], "queue"
+        )
         self.library.played([choice])
         log.info("autoplay in %s: %s", speaker, choice.title)
         return choice
 
+    def prefetch_next(self, speaker: str, status: dict) -> str | None:
+        """Convert the track after the playing one, so it starts without a gap."""
+        position, length = status.get("queue_position") or 0, status.get("queue_length") or 0
+        key = (status.get("video_id"), position, length)
+        if (
+            status.get("state") != "PLAYING"
+            or not 0 < position < length
+            or self._next_checked.get(speaker) == key
+        ):
+            return None
+        self._next_checked[speaker] = key
+        queue = self.sonos.queue(speaker)
+        if position >= len(queue):
+            return None
+        upcoming = queue[position]  # 0-based index of the item after the current one
+        if not upcoming.get("video_id") or upcoming.get("live"):
+            return None
+        self.transcoder.prefetch([upcoming["video_id"]])
+        return upcoming["video_id"]
+
+    def monitor_once(self) -> None:
+        """One round of background care for the rooms in use."""
+        now = time.monotonic()
+        self._active = {s: t for s, t in self._active.items() if now - t < 12 * 3600}
+        autoplay = set(self.library.autoplay_speakers())
+        for speaker in sorted(autoplay | set(self._active)):
+            try:
+                status = self.sonos.status(speaker)
+                self.prefetch_next(speaker, status)
+                if speaker in autoplay:
+                    self.autoplay_once(speaker, status)
+            except Exception as exc:  # noqa: BLE001 - keep the loop alive
+                log.warning("monitoring %s failed: %s", speaker, exc)
+
     def start_autoplay(self) -> threading.Thread:
         def loop() -> None:
             while True:
-                for speaker in self.library.autoplay_speakers():
-                    try:
-                        self.autoplay_once(speaker)
-                    except Exception as exc:  # noqa: BLE001 - keep the loop alive
-                        log.warning("autoplay for %s failed: %s", speaker, exc)
+                self.monitor_once()
                 time.sleep(AUTOPLAY_INTERVAL)
 
-        thread = threading.Thread(target=loop, name="autoplay", daemon=True)
+        thread = threading.Thread(target=loop, name="monitor", daemon=True)
         thread.start()
         return thread
 
@@ -221,7 +264,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._guard(lambda: self.app.sonos.speakers(refresh))
         if url.path == "/api/search":
             q = query.get("q", [""])[0]
-            return self._guard(lambda: [t.to_dict() for t in self.app.search(q)])
+            return self._guard(lambda: [t.to_dict() for t in self.app.search(q, prefetch=True)])
+        if url.path == "/api/suggest":
+            q = query.get("q", [""])[0]
+            return self._guard(lambda: self.app.suggest(q[:200]))
         if url.path == "/api/queue":
             speaker = query.get("speaker", [""])[0]
             return self._guard(lambda: self.app.sonos.queue(speaker))
@@ -251,9 +297,10 @@ class Handler(BaseHTTPRequestHandler):
                     and all(isinstance(i, str) and youtube.VIDEO_ID_RE.match(i) for i in ids)
                 ):
                     raise ValueError("ids must be a list of YouTube video ids")
-                return self.app.play(
-                    str(body["speaker"]), ids, body.get("query"), not body.get("queue", False)
-                )
+                mode = body.get("mode") or ("queue" if body.get("queue") else "now")
+                if mode not in ("now", "next", "queue"):
+                    raise ValueError("mode must be now, next or queue")
+                return self.app.play(str(body["speaker"]), ids, body.get("query"), mode)
             return self._guard(play)
         if path == "/api/control":
             def control():
@@ -264,9 +311,12 @@ class Handler(BaseHTTPRequestHandler):
                         speaker, int(body["volume"]), bool(body.get("single"))
                     )
                 if body.get("action"):
-                    value = body.get("value")
+                    value, to = body.get("value"), body.get("to")
                     self.app.sonos.control(
-                        speaker, str(body["action"]), None if value is None else int(value)
+                        speaker,
+                        str(body["action"]),
+                        None if value is None else int(value),
+                        None if to is None else int(to),
                     )
                 return {"ok": True}
             return self._guard(control)
@@ -277,6 +327,21 @@ class Handler(BaseHTTPRequestHandler):
                 self.app.library.set_favorite(track, bool(body.get("favorite", True)))
                 return self.app.library.snapshot()
             return self._guard(favorite)
+        if path == "/api/playlist":
+            def playlist():
+                body = self._body()
+                name, op = str(body["name"]), str(body.get("op") or "add")
+                if op == "add":
+                    track = self.app.track(youtube.watch_id(str(body["id"])))
+                    self.app.library.playlist_add(name, track)
+                elif op == "remove":
+                    self.app.library.playlist_remove(name, str(body["id"]))
+                elif op == "delete":
+                    self.app.library.playlist_delete(name)
+                else:
+                    raise ValueError("op must be add, remove or delete")
+                return self.app.library.snapshot()
+            return self._guard(playlist)
         if path == "/api/autoplay":
             def autoplay():
                 body = self._body()

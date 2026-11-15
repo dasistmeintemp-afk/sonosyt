@@ -140,19 +140,25 @@ class SonosController:
             pass
         return dev
 
-    def enqueue(self, speaker: str, items: list[tuple[Track, str]], play_now: bool) -> int:
+    def enqueue(self, speaker: str, items: list[tuple[Track, str]], mode: str = "now") -> int:
         """Add tracks to the speaker's queue.
 
-        ``items`` are (track, stream URL) pairs. With ``play_now`` they go
-        right after the current track and playback jumps to the first of them,
-        so whatever was queued before continues afterwards; otherwise they are
-        appended. Returns the 1-based queue position of the first added track.
+        ``items`` are (track, stream URL) pairs. ``mode``:
+
+        * ``"now"``  - right after the current track, and playback jumps to the
+          first of them; whatever was queued before continues afterwards.
+        * ``"next"`` - right after the current track, without interrupting it.
+        * ``"queue"`` - at the end.
+
+        Returns the 1-based queue position of the first added track.
         """
+        if mode not in ("now", "next", "queue"):
+            raise SonosError(f"Unbekannter Modus: {mode!r}")
         if not items:
             raise SonosError("Keine Titel zum Abspielen.")
         coord = self._coordinator(self.get(speaker))
         insert_at = 0  # 0 = append
-        if play_now:
+        if mode in ("now", "next"):
             try:
                 current = int(coord.get_current_track_info().get("playlist_position") or 0)
                 if 1 <= current <= coord.queue_size:
@@ -173,11 +179,13 @@ class SonosController:
                 pos = coord.add_to_queue(item)
             if first is None:
                 first = pos
-        if play_now:
+        if mode == "now":
             coord.play_from_queue(first - 1)
         return first
 
-    def control(self, speaker: str, action: str, value: int | None = None) -> None:
+    def control(
+        self, speaker: str, action: str, value: int | None = None, to: int | None = None
+    ) -> None:
         coord = self._coordinator(self.get(speaker))
         methods = {
             "play": "play",
@@ -195,6 +203,11 @@ class SonosController:
             coord.play_from_queue(int(value))
         elif action == "remove":
             coord.remove_from_queue(int(value))
+        elif action == "move":  # queue item at 0-based index ``value`` to index ``to``
+            try:
+                coord.move_in_queue(int(value), int(to))
+            except ValueError as exc:
+                raise SonosError("Diese Position gibt es in der Warteschlange nicht.") from exc
         elif action in ("shuffle", "repeat"):
             # Only possible while the queue is playing; Sonos refuses otherwise.
             try:
@@ -295,9 +308,16 @@ class SonosController:
             art = getattr(item, "album_art_uri", "") or ""
             if art.startswith("/"):  # served by the speaker itself
                 art = f"http://{coord.ip_address}:1400{art}"
+            try:
+                uri = item.resources[0].uri or ""
+            except (AttributeError, IndexError):
+                uri = ""
+            ours = re.search(r"/(stream|live)/([A-Za-z0-9_-]{11})\.mp3$", uri)
             out.append({
                 "title": getattr(item, "title", "") or "",
                 "artist": getattr(item, "creator", "") or "",
                 "album_art": art,
+                "video_id": ours.group(2) if ours else None,
+                "live": bool(ours and ours.group(1) == "live"),
             })
         return out

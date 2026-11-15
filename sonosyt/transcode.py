@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import queue
 import subprocess
 import sys
 import threading
@@ -112,6 +113,8 @@ class Transcoder:
         self.ffmpeg = ffmpeg
         self._jobs: dict[str, Job] = {}
         self._lock = threading.Lock()
+        self._prefetch: queue.Queue[str] = queue.Queue()
+        self._prefetch_workers = 0
         for stale in self.cache_dir.glob("*.part"):  # left over from a crash
             stale.unlink(missing_ok=True)
 
@@ -150,6 +153,39 @@ class Transcoder:
             target=self._run, args=(job,), name=f"transcode-{video_id}", daemon=True
         ).start()
         return job
+
+    def prefetch(self, video_ids: list[str], workers: int = 2, backlog: int = 12) -> None:
+        """Convert videos ahead of time, a few at once, without blocking.
+
+        Used for things likely to be played next (top search hits, queued
+        tracks). A video the speaker asks for directly never waits behind these.
+        """
+        for video_id in video_ids:
+            path = self.final_path(video_id)  # validates the id
+            with self._lock:
+                if path.is_file() or video_id in self._jobs:
+                    continue
+            if self._prefetch.qsize() >= backlog:
+                return
+            self._prefetch.put(video_id)
+        with self._lock:
+            start = max(0, min(workers, self._prefetch.qsize()) - self._prefetch_workers)
+            self._prefetch_workers += start
+        for _ in range(start):
+            threading.Thread(target=self._prefetch_loop, name="prefetch", daemon=True).start()
+
+    def _prefetch_loop(self) -> None:
+        while True:
+            try:
+                video_id = self._prefetch.get(timeout=30)
+            except queue.Empty:
+                with self._lock:
+                    self._prefetch_workers -= 1
+                return
+            try:
+                self.ensure(video_id).done.wait(1800)
+            except Exception:  # noqa: BLE001 - best effort
+                log.exception("prefetch of %s failed", video_id)
 
     def live(self, video_id: str, chunk_size: int = 16 * 1024) -> Iterator[bytes]:
         """MP3 audio of a running livestream, until the consumer stops.

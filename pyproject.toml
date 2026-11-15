@@ -9,7 +9,7 @@ description = "Play the audio of YouTube videos on Sonos speakers"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "soco>=0.30",
+    "soco>=0.32",
     "yt-dlp>=2025.1.1",
 ]
 
