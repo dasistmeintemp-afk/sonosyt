@@ -194,6 +194,14 @@ async function refreshStatus() {
 }
 
 loadSpeakers(false);
+
+// Links shared from the phone app arrive as /?q=<link>.
+const shared = new URLSearchParams(location.search).get('q');
+if (shared) {
+  $('q').value = shared;
+  history.replaceState(null, '', location.pathname);
+  $('form').requestSubmit();
+}
 setInterval(refreshStatus, 3000);
 </script>
 </body>

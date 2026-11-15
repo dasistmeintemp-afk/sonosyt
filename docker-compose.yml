@@ -1,0 +1,15 @@
+services:
+  sonosyt:
+    build: .
+    container_name: sonosyt
+    restart: unless-stopped
+    # Host network: needed so the server finds the Sonos speakers
+    # and the speakers can reach it on port 8327.
+    network_mode: host
+    volumes:
+      - sonosyt-cache:/cache
+    # Extra options, e.g. fixed speaker addresses if discovery finds nothing:
+    # command: ["--speaker-ip", "192.168.1.50"]
+
+volumes:
+  sonosyt-cache:

@@ -13,7 +13,7 @@ from importlib import resources
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from . import youtube
+from . import __version__, youtube
 from .sonos import SonosController, SonosError, local_ip_for
 from .transcode import Transcoder
 from .youtube import Track, YouTubeError
@@ -151,6 +151,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._stream(m.group(1))
         if url.path in ("/", "/index.html"):
             return self._index()
+        if url.path == "/api/ping":  # lets the Android app recognise the server
+            return self._json({"app": "sonosyt", "version": __version__})
         if url.path == "/api/speakers":
             refresh = query.get("refresh", ["0"])[0] == "1"
             return self._guard(lambda: self.app.sonos.speakers(refresh))
