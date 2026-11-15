@@ -344,6 +344,29 @@
   a.menu-item { color: inherit; text-decoration: none; }
   .about { color: var(--muted); font-size: .8125rem; padding: 8px 4px 0; line-height: 1.6; }
 
+  /* --- mute, tone controls, diagnosis --------------------------------------------------- */
+  #muteBtn { flex: none; width: 40px; height: 40px; margin: 0 -10px; border-radius: 50%;
+             display: grid; place-items: center; color: var(--muted); }
+  #muteBtn svg { color: inherit; }
+  #muteBtn[aria-pressed=true] { color: var(--accent); }
+  .volume.muted input, .volume.muted output { opacity: .4; }
+  .room-row .tune { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid;
+                    place-items: center; color: var(--muted); }
+  .room-row .tune[aria-expanded=true] { color: var(--accent); background: var(--soft); }
+  .room-row .top-line { display: flex; align-items: center; gap: 4px; }
+  .room-row .top-line .head { flex: 1; min-width: 0; }
+  .eq-box { padding: 4px 0 6px 36px; display: grid; gap: 2px; }
+  .eq-box .line { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+  .eq-box .line > span { flex: none; width: 4.6em; font-size: .875rem; color: var(--muted); }
+  .eq-box .line > span:last-of-type { flex: 1; }
+  #more { display: block; margin: 12px auto 0; }
+  .check-line { display: flex; gap: 12px; align-items: flex-start; padding: 8px 4px; }
+  .check-line b { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid;
+                  place-items: center; color: #fff; font-size: .8125rem; background: #16a34a; }
+  .check-line.bad b { background: var(--error); }
+  .check-line.unknown b { background: var(--muted); }
+  .check-line small { display: block; color: var(--muted); font-size: .8125rem; line-height: 1.35; }
+
   /* --- toast + volume overlay ------------------------------------------- */
   #toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
            bottom: calc(205px + env(safe-area-inset-bottom)); max-width: min(92vw, 520px);
@@ -392,6 +415,10 @@
   <symbol id="i-history" viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.9 3.9L9 12H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3zm-1 5v5l4.25 2.52.77-1.28-3.52-2.09V8z"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></symbol>
   <symbol id="i-radio" viewBox="0 0 24 24"><path d="M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 2a6 6 0 0 0-1.76-4.24l-1.41 1.41a4 4 0 0 1 0 5.66l1.41 1.41A6 6 0 0 0 18 12zM7.76 7.76A6 6 0 0 0 6 12a6 6 0 0 0 1.76 4.24l1.41-1.41a4 4 0 0 1 0-5.66L7.76 7.760zM19.070 4.930l-1.410 1.410a8 8 0 0 1 0 11.320l1.410 1.410a10 10 0 0 0 0-14.140zM4.930 4.930a10 10 0 0 0 0 14.140l1.410-1.410a8 8 0 0 1 0-11.320L4.930 4.930z"/></symbol>
+  <symbol id="i-vol-off" viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0 0 14 8v2.18l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4 9.91 6.09 12 8.18V4z"/></symbol>
+  <symbol id="i-tune" viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></symbol>
   <symbol id="i-note" viewBox="0 0 24 24"><path d="M12 3v10.600a4 4 0 1 0 2 3.400V7h4V3z"/></symbol>
 </svg>
 
@@ -462,10 +489,12 @@
     <div class="label"><span id="count"></span>
       <span class="tools">
         <button class="pill" id="delPlaylist" hidden>Löschen</button>
+        <button class="pill" id="savePlaylist" hidden>Speichern</button>
         <button class="pill" id="shuffleAll" hidden>Zufällig</button>
         <button class="pill primary" id="all" hidden>Alle abspielen</button>
       </span></div>
     <ul class="tracklist" id="results"></ul>
+    <button class="pill" id="more" hidden>Mehr anzeigen</button>
     <div class="hint" id="emptyList" hidden>Diese Playlist ist noch leer. Füge Titel über die
       drei Punkte neben einem Titel hinzu.</div>
   </section>
@@ -496,8 +525,8 @@
         <button data-action="next" aria-label="Nächster Titel"><svg><use href="#i-next"/></svg></button>
       </div>
     </div>
-    <div class="volume">
-      <svg><use href="#i-vol"/></svg>
+    <div class="volume" id="volumeRow">
+      <button id="muteBtn" aria-label="Stummschalten" aria-pressed="false"><svg><use id="muteIcon" href="#i-vol"/></svg></button>
       <input type="range" id="volume" min="0" max="100" value="0" aria-label="Lautstärke">
       <output id="volNum">–</output>
       <button class="queue-btn" id="openQueue" aria-label="Warteschlange öffnen">
@@ -525,6 +554,7 @@
     <button class="pill" id="optRepeat" aria-pressed="false">Wiederholen</button>
     <button class="pill" id="optAutoplay" aria-pressed="false">Autoplay</button>
     <button class="pill" id="optSleep" aria-pressed="false">Sleep-Timer</button>
+    <button class="pill" id="saveQueue">Als Playlist speichern</button>
   </div>
   <div class="opts" id="sleepChoices" hidden>
     <button class="pill" data-min="0">Aus</button>
@@ -603,6 +633,11 @@
     <button class="menu-item" id="setClearCache"><svg><use href="#i-note"/></svg>
       <span>Zwischenspeicher leeren<small id="cacheInfo">&nbsp;</small></span></button>
 
+    <div class="label">Verbindung</div>
+    <button class="menu-item" id="runDiagnose"><svg><use href="#i-radio"/></svg>
+      <span>Verbindung prüfen<small>Testet YouTube, Lautsprecher und den Rückweg zum Server</small></span></button>
+    <div id="diagnosis"></div>
+
     <div class="label">Server und App</div>
     <a class="menu-item" id="setServer" href="sonosyt://settings" hidden><svg><use href="#i-gear"/></svg><span>Server-Adresse ändern</span></a>
     <div class="about" id="about"></div>
@@ -617,7 +652,7 @@
   <div class="body">
     <div id="menuItems"></div>
     <div id="plChooser" hidden>
-      <div class="label" style="margin-top:0">Playlist wählen</div>
+      <div class="label" style="margin-top:0" id="plLabel">Playlist wählen</div>
       <div class="chips" id="plChoices"></div>
       <form id="plForm">
         <input id="plName" placeholder="Neue Playlist" maxlength="60" autocomplete="off"
@@ -993,7 +1028,7 @@ async function search() {
     return toast('Nichts gefunden.', true);
   }
   remember(term);
-  view = {kind: 'search'};
+  view = {kind: 'search', term, more: found.length < 10 || isUrl(term)};
   results = found;
   showResults(found.length === 1 ? '1 Treffer' : `${found.length} Treffer`,
               isUrl(term) && found.length > 1);
@@ -1126,6 +1161,8 @@ function trackCard(t) {
 
 function renderResults() {
   $('results').replaceChildren(...results.map(trackRow));
+  $('more').hidden = !(view.kind === 'search' && !view.more);
+  $('savePlaylist').hidden = !(view.kind === 'search' && isUrl(view.term || '') && results.length > 1);
   if (view.kind === 'playlist') {
     $('count').textContent = view.name;
     $('all').hidden = $('shuffleAll').hidden = !results.length;
@@ -1156,6 +1193,47 @@ function markCurrent() {
   });
 }
 
+$('more').onclick = async () => {
+  const term = view.term;
+  $('more').disabled = true;
+  $('more').textContent = 'Lädt …';
+  try {
+    const found = await api('/api/search?limit=25&q=' + encodeURIComponent(term));
+    if (view.kind === 'search' && view.term === term) {
+      results = found;
+      view.more = true;
+      $('count').textContent = `${found.length} Treffer`;
+      renderResults();
+    }
+  } catch (e) { toast(e.message, true); }
+  $('more').disabled = false;
+  $('more').textContent = 'Mehr anzeigen';
+};
+
+// Asks for a playlist name in the sheet, then stores these tracks under it.
+function saveAsPlaylist(ids, heading) {
+  if (!ids.length) return toast('Hier ist nichts zum Speichern.', true);
+  $('menuTitle').textContent = heading;
+  $('menuItems').hidden = true;
+  $('plChooser').hidden = false;
+  $('plLabel').textContent = 'Name der neuen Playlist';
+  $('plChoices').replaceChildren();
+  $('plName').value = '';
+  $('plForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const name = $('plName').value.trim();
+    if (!name) return;
+    closeSheet();
+    try {
+      applyLibrary(await api('/api/playlist', {name, op: 'set', ids}));
+      toast(`Playlist „${name}“ gespeichert (${ids.length} Titel)`);
+    } catch (err) { toast(err.message, true); }
+  };
+  openSheet('menuSheet');
+  setTimeout(() => $('plName').focus(), 250);
+}
+$('savePlaylist').onclick = () => saveAsPlaylist(results.map((t) => t.id), 'YouTube-Playlist speichern');
+
 $('all').onclick = () => play(results.map((t) => t.id), 'now');
 $('shuffleAll').onclick = () => {
   const ids = results.map((t) => t.id);
@@ -1175,7 +1253,18 @@ function menuItem(name, label, action) {
   return b;
 }
 
+async function shareLink(t) {
+  const url = 'https://youtu.be/' + t.id;
+  if (window.SonosytApp && window.SonosytApp.share) return bridge('share', t.title, url);
+  try {
+    if (navigator.share) return await navigator.share({title: t.title, url});
+    await navigator.clipboard.writeText(url);
+    toast('Link kopiert');
+  } catch (e) { toast(url); }
+}
+
 function openMenu(t, row, playlistsOnly) {
+  $('plLabel').textContent = 'Playlist wählen';
   $('menuTitle').textContent = t.title;
   const act = (fn) => () => { closeSheet(); fn(); };
   const items = [
@@ -1190,6 +1279,11 @@ function openMenu(t, row, playlistsOnly) {
       $('plChooser').hidden = false;
     }),
     menuItem('radio', 'Ähnliche Titel anzeigen', act(() => leavePlayer(() => showRelated(t)))),
+    menuItem('share', 'Link teilen', act(() => shareLink(t))),
+    menuItem('open', 'In YouTube öffnen', act(() => {
+      const a = el('a'); a.href = 'https://www.youtube.com/watch?v=' + t.id; a.target = '_blank';
+      a.rel = 'noopener'; document.body.append(a); a.click(); a.remove();
+    })),
   ];
   if (view.kind === 'playlist') {
     const name = view.name;
@@ -1229,6 +1323,7 @@ async function play(ids, mode, row) {
     const n = r.queued.length;
     if (mode === 'queue') toast(n > 1 ? `${n} Titel eingereiht` : 'Zur Warteschlange hinzugefügt');
     else if (mode === 'next') toast('Wird als Nächstes gespielt');
+    else if (r.resumed) toast(`Setzt fort bei ${fmt(r.resumed)}`);
     else toast(n > 1 ? `${n} Titel – Wiedergabe startet` : `Spielt in ${speaker()}`);
   } catch (e) { toast(e.message, true); }
   if (row) row.classList.remove('busy');
@@ -1294,6 +1389,11 @@ function paint() {
     $('npBg').style.backgroundImage = '';
     $('art').hidden = true; $('noart').hidden = false;
   }
+  const muted = !!(s && s.muted);
+  $('muteBtn').setAttribute('aria-pressed', muted);
+  $('muteBtn').setAttribute('aria-label', muted ? 'Ton wieder einschalten' : 'Stummschalten');
+  $('muteIcon').setAttribute('href', muted ? '#i-vol-off' : '#i-vol');
+  $('volumeRow').classList.toggle('muted', muted);
   $('npRoom').textContent = speaker();
   const ours = !!(has && s.video_id);
   const fav = ours && isFavorite(s.video_id);
@@ -1410,6 +1510,20 @@ async function syncVideo() {
 const nowTrack = () => ({id: status.video_id, title: status.title, uploader: status.artist || ''});
 ['nowMeta', 'art', 'noart'].forEach((id) => { $(id).onclick = expandPlayer; });
 $('npClose').onclick = () => { if (here() === 'player') history.back(); else collapsePlayer(); };
+
+// Swiping down anywhere but on a slider closes the full-screen player.
+let swipe = null;
+$('player').addEventListener('touchstart', (e) => {
+  const open = $('player').classList.contains('expanded') && here() === 'player';
+  swipe = open && !e.target.closest('input, #npVideo iframe')
+    ? {x: e.touches[0].clientX, y: e.touches[0].clientY} : null;
+}, {passive: true});
+$('player').addEventListener('touchend', (e) => {
+  if (!swipe) return;
+  const dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
+  swipe = null;
+  if (dy > 90 && Math.abs(dx) < dy / 2) $('npClose').onclick();
+}, {passive: true});
 $('npRooms').onclick = () => $('openRooms').onclick();
 $('npQueue').onclick = () => openQueue();
 $('npFav').onclick = async () => { buzz(); await toggleFavorite(nowTrack()); paint(); };
@@ -1466,6 +1580,13 @@ function setVolume(value) {
 }
 
 $('volume').oninput = () => setVolume(Number($('volume').value));
+$('muteBtn').onclick = () => {
+  const mute = !(status && status.muted);
+  buzz();
+  if (status) status.muted = mute;
+  paint();
+  control('mute', mute ? 1 : 0);
+};
 
 let hudTimer;
 // Called by the Android app when the phone's volume keys are pressed.
@@ -1573,6 +1694,12 @@ function openQueue() {
   loadQueue(true);
 }
 $('openQueue').onclick = openQueue;
+$('saveQueue').onclick = async () => {
+  let items = [];
+  try { items = await api('/api/queue?speaker=' + encodeURIComponent(speaker())); } catch (e) {}
+  saveAsPlaylist(items.filter((t) => t.video_id && !t.live).map((t) => t.video_id),
+                 'Warteschlange als Playlist speichern');
+};
 $('clearQueue').onclick = async () => { await control('clear'); closeSheet(); toast('Warteschlange geleert'); };
 
 // ---- playback options -----------------------------------------------------------------------
@@ -1660,7 +1787,48 @@ function roomRow(room) {
     refreshStatus();
   };
   vol.append(slider, num);
-  row.append(head, vol);
+
+  // Tone controls, folded away behind the slider icon.
+  const tune = el('button', 'tune');
+  tune.setAttribute('aria-label', `Klang für ${room.name}`);
+  tune.setAttribute('aria-expanded', 'false');
+  tune.append(icon('tune'));
+  const eq = el('div', 'eq-box');
+  eq.hidden = true;
+  const sendEq = async (change) => {
+    try { await api('/api/eq', {room: room.name, ...change}); } catch (e) { toast(e.message, true); }
+  };
+  const eqLine = (label, key) => {
+    const line = el('div', 'line');
+    const range = el('input'); range.type = 'range'; range.min = -10; range.max = 10;
+    range.value = room[key]; range.setAttribute('aria-label', `${label} ${room.name}`);
+    const out = el('output', '', (room[key] > 0 ? '+' : '') + room[key]);
+    fill(range);
+    range.oninput = () => { out.textContent = (range.value > 0 ? '+' : '') + range.value; fill(range); };
+    range.onchange = () => sendEq({[key]: Number(range.value)});
+    line.append(el('span', '', label), range, out);
+    return line;
+  };
+  const loudLine = el('div', 'line');
+  const loud = el('button', 'switch');
+  loud.setAttribute('role', 'switch');
+  loud.setAttribute('aria-label', `Loudness ${room.name}`);
+  loud.setAttribute('aria-checked', !!room.loudness);
+  loud.onclick = () => {
+    const on = loud.getAttribute('aria-checked') !== 'true';
+    loud.setAttribute('aria-checked', on);
+    sendEq({loudness: on});
+  };
+  loudLine.append(el('span', '', 'Loudness'), el('span', ''), loud);
+  eq.append(eqLine('Bass', 'bass'), eqLine('Höhen', 'treble'), loudLine);
+  tune.onclick = () => {
+    eq.hidden = !eq.hidden;
+    tune.setAttribute('aria-expanded', !eq.hidden);
+  };
+
+  const topLine = el('div', 'top-line');
+  topLine.append(head, tune);
+  row.append(topLine, vol, eq);
   return row;
 }
 
@@ -1718,6 +1886,36 @@ $('openSettings').onclick = async () => {
   openSheet('settingsSheet');
   try { showInfo(await api('/api/info')); } catch (e) { /* stays blank */ }
 };
+function checkLine(state, title, detail) {
+  const line = el('div', 'check-line' + (state === true ? '' : state === false ? ' bad' : ' unknown'));
+  const text = el('span', '', title);
+  text.append(el('small', '', detail));
+  line.append(el('b', '', state === true ? '✓' : state === false ? '!' : '?'), text);
+  return line;
+}
+
+$('runDiagnose').onclick = async () => {
+  $('diagnosis').replaceChildren(checkLine(null, 'Prüfe …', 'Das dauert ein paar Sekunden.'));
+  let d;
+  try { d = await api('/api/diagnose?speaker=' + encodeURIComponent(speaker())); }
+  catch (e) {
+    return $('diagnosis').replaceChildren(checkLine(false, 'Prüfung fehlgeschlagen', e.message));
+  }
+  const fetched = d.fetched_ago === null ? null : true;
+  const ago = d.fetched_ago === null ? '' : d.fetched_ago < 90 ? 'gerade eben'
+    : d.fetched_ago < 5400 ? `vor ${Math.round(d.fetched_ago / 60)} Minuten`
+    : `vor ${Math.round(d.fetched_ago / 3600)} Stunden`;
+  $('diagnosis').replaceChildren(
+    checkLine(d.youtube, 'Server → YouTube',
+      d.youtube ? 'Der Server erreicht YouTube.' : 'Der Server kommt nicht ins Internet zu YouTube.'),
+    checkLine(d.speaker, `Server → ${speaker()}`,
+      d.speaker ? 'Der Lautsprecher antwortet.' : 'Der Lautsprecher antwortet nicht (Port 1400).'),
+    checkLine(fetched, `${speaker()} → Server`,
+      fetched ? `Ein Lautsprecher hat zuletzt ${ago} Musik abgeholt.`
+        : `Seit dem Start hat noch kein Lautsprecher Musik abgeholt. Bleibt das nach dem Abspielen so, blockiert eine Firewall den Weg zu ${d.stream_base}.`),
+  );
+};
+
 $('setClearSearch').onclick = () => { store('recent', []); renderHome(); toast('Suchverlauf gelöscht'); };
 $('setClearHistory').onclick = async () => {
   try { applyLibrary(await api('/api/history/clear', {})); toast('„Zuletzt gespielt“ geleert'); }

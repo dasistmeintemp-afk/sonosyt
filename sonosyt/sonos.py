@@ -254,6 +254,8 @@ class SonosController:
                 coord.move_in_queue(int(value), int(to))
             except ValueError as exc:
                 raise SonosError("Diese Position gibt es in der Warteschlange nicht.") from exc
+        elif action == "mute":
+            self._volume_target(self.get(speaker)).mute = bool(value)
         elif action in ("shuffle", "repeat"):
             # Only possible while the queue is playing; Sonos refuses otherwise.
             try:
@@ -300,6 +302,9 @@ class SonosController:
                 continue
             out.append({
                 "name": room.player_name,
+                "bass": self._safe(lambda r=room: r.bass, 0),
+                "treble": self._safe(lambda r=room: r.treble, 0),
+                "loudness": bool(self._safe(lambda r=room: r.loudness, False)),
                 "volume": volume,
                 "grouped": room.ip_address in members,
                 "selected": room.ip_address == dev.ip_address,
@@ -367,7 +372,31 @@ class SonosController:
             "repeat": 2 if "REPEAT_ONE" in mode else int(mode in ("REPEAT_ALL", "SHUFFLE")),
             "sleep": self._safe(coord.get_sleep_timer, 0) or 0,  # seconds left
             "volume": self._volume_target(dev).volume,
+            "muted": bool(self._safe(lambda: self._volume_target(dev).mute, False)),
         }
+
+    def reachable(self, speaker: str) -> bool:
+        """Does the speaker answer on its control port right now?"""
+        import urllib.request
+
+        dev = self.get(speaker)
+        url = f"http://{dev.ip_address}:1400/xml/device_description.xml"
+        try:
+            with urllib.request.urlopen(url, timeout=3) as resp:
+                return resp.status == 200
+        except Exception:  # noqa: BLE001
+            return False
+
+    def set_eq(self, room: str, bass=None, treble=None, loudness=None) -> dict:
+        """Tone controls of one room. Bass and treble range from -10 to 10."""
+        dev = self.get(room)
+        if bass is not None:
+            dev.bass = max(-10, min(10, int(bass)))
+        if treble is not None:
+            dev.treble = max(-10, min(10, int(treble)))
+        if loudness is not None:
+            dev.loudness = bool(loudness)
+        return {"bass": dev.bass, "treble": dev.treble, "loudness": bool(dev.loudness)}
 
     @staticmethod
     def _safe(fn, default):

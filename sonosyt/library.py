@@ -20,6 +20,7 @@ class Library:
         self._history: list[Track] = []
         self._autoplay: set[str] = set()
         self._playlists: dict[str, list[Track]] = {}
+        self._positions: dict[str, int] = {}  # video id -> seconds, to resume long videos
         self._load()
 
     def _load(self) -> None:
@@ -42,6 +43,13 @@ class Library:
         self._favorites = tracks("favorites")
         self._history = tracks("history")[:HISTORY_LIMIT]
         self._autoplay = {str(name) for name in data.get("autoplay") or []}
+        positions = data.get("positions")
+        if isinstance(positions, dict):
+            for video_id, seconds in positions.items():
+                try:
+                    self._positions[str(video_id)] = int(seconds)
+                except (TypeError, ValueError):
+                    continue
         for entry in data.get("playlists") or []:
             if isinstance(entry, dict) and entry.get("name"):
                 self._playlists[str(entry["name"])] = tracks("tracks", entry)
@@ -52,6 +60,7 @@ class Library:
             "history": [t.to_dict() for t in self._history],
             "autoplay": sorted(self._autoplay),
             "playlists": self._playlist_dicts(),
+            "positions": self._positions,
         }
         tmp = self.path.with_suffix(".tmp")
         try:
@@ -101,6 +110,15 @@ class Library:
                 tracks.append(track)
             self._save()
 
+    def playlist_set(self, name: str, tracks: list[Track]) -> None:
+        """Create or replace a playlist with these tracks (duplicates dropped)."""
+        name = self._playlist_name(name)
+        seen: set[str] = set()
+        unique = [t for t in tracks if not (t.id in seen or seen.add(t.id))]
+        with self._lock:
+            self._playlists[name] = unique[:500]
+            self._save()
+
     def playlist_remove(self, name: str, video_id: str) -> None:
         name = self._playlist_name(name)
         with self._lock:
@@ -140,6 +158,29 @@ class Library:
     def recent_ids(self) -> set[str]:
         with self._lock:
             return {t.id for t in self._history}
+
+    # -- resume positions ------------------------------------------------------
+
+    def position(self, video_id: str) -> int:
+        with self._lock:
+            return self._positions.get(video_id, 0)
+
+    def set_position(self, video_id: str, seconds: int) -> None:
+        """Remember where a long video was left; 0 forgets it."""
+        with self._lock:
+            old = self._positions.get(video_id, 0)
+            if seconds <= 0:
+                if not old:
+                    return
+                del self._positions[video_id]
+            else:
+                if abs(seconds - old) < 20:
+                    return  # not worth a write
+                self._positions.pop(video_id, None)
+                self._positions[video_id] = int(seconds)
+                while len(self._positions) > 200:
+                    self._positions.pop(next(iter(self._positions)))
+            self._save()
 
     # -- autoplay ------------------------------------------------------------
 

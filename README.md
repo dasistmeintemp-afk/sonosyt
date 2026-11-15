@@ -73,6 +73,15 @@ Danach:
   und den Sleep-Timer.
 - **Räume** (Symbol oben rechts): Räume zusammenschalten und jeden einzeln in der Lautstärke
   regeln.
+- **Lange Videos** (ab 20 Minuten) werden beim nächsten Abspielen dort fortgesetzt, wo du
+  aufgehört hast.
+- **Lautsprecher-Symbol** neben dem Lautstärkeregler schaltet stumm. Unter **Räume** öffnet das
+  Regler-Symbol Bass, Höhen und Loudness je Raum.
+- **Playlists speichern:** YouTube-Playlists (Link einfügen → „Speichern") und die aktuelle
+  Warteschlange lassen sich als eigene Playlist ablegen.
+- **Teilen und „In YouTube öffnen"** stehen im Menü jedes Titels.
+- **Verbindung prüfen** in den Einstellungen testet YouTube, Lautsprecher und den Rückweg zum
+  Server – hilfreich bei Firewall-Problemen.
 - **Livestreams** (z. B. Lofi-Radio) sind in der Suche mit „LIVE" markiert und laufen endlos.
 - Die Zurück-Taste schließt geöffnete Fenster und führt von Trefferlisten zur Startseite.
 - **Einstellungen** (Zahnrad oben rechts): helles/dunkles Design, Akzentfarbe, Video an/aus und

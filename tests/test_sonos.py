@@ -9,6 +9,7 @@ class FakeGroup:
         self.members = []
         self.coordinator = None
         self.volume = 33
+        self.mute = False
 
 
 class FakeSpeaker:
@@ -29,6 +30,8 @@ class FakeSpeaker:
         self.repeat = False
         self.sleep = None
         self.joined = "unset"
+        self.mute = False
+        self.bass, self.treble, self.loudness = 0, 0, True
         self.uid = "RINCON_" + ip.replace(".", "")
 
     def get_sleep_timer(self):
@@ -245,9 +248,12 @@ def test_rooms_grouping_and_single_room_volume(setup, monkeypatch):
     monkeypatch.setattr(ctl, "_discover", lambda: [living, kitchen, bath])
     ctl.devices(refresh=True)
     assert ctl.rooms("Wohnzimmer") == [
-        {"name": "Bad", "volume": 20, "grouped": False, "selected": False},
-        {"name": "Küche", "volume": 20, "grouped": True, "selected": False},
-        {"name": "Wohnzimmer", "volume": 20, "grouped": True, "selected": True},
+        {"name": "Bad", "bass": 0, "treble": 0, "loudness": True, "volume": 20,
+         "grouped": False, "selected": False},
+        {"name": "Küche", "bass": 0, "treble": 0, "loudness": True, "volume": 20,
+         "grouped": True, "selected": False},
+        {"name": "Wohnzimmer", "bass": 0, "treble": 0, "loudness": True, "volume": 20,
+         "grouped": True, "selected": True},
     ]
     ctl.group("Wohnzimmer", "Bad", True)
     assert bath.joined is kitchen  # joins the coordinator of the selected room's group
@@ -343,3 +349,16 @@ def test_grouping_falls_back_to_the_websocket_api_when_upnp_is_refused(setup, mo
     answer["success"] = False  # both ways refused: a readable error, not a crash
     with pytest.raises(SonosError, match="Bad lässt sich gerade nicht hinzufügen"):
         ctl.group("Wohnzimmer", "Bad", True)
+
+
+def test_mute_and_tone_controls(setup):
+    ctl, kitchen, living = setup
+    ctl.control("Wohnzimmer", "mute", 1)
+    assert kitchen.group.mute is True and living.mute is False  # grouped: the whole group
+    assert ctl.status("Wohnzimmer")["muted"] is True
+    ctl.control("Wohnzimmer", "mute", 0)
+    assert ctl.status("Wohnzimmer")["muted"] is False
+    assert ctl.set_eq("Wohnzimmer", bass=25, treble=-3, loudness=False) == {
+        "bass": 10, "treble": -3, "loudness": False}
+    assert (living.bass, living.treble, living.loudness) == (10, -3, False) and kitchen.bass == 0
+    assert ctl.set_eq("Küche") == {"bass": 0, "treble": 0, "loudness": True}  # nothing given: unchanged
