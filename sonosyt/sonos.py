@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import socket
 import threading
 import time
@@ -24,6 +25,17 @@ def _hms(seconds: int | None) -> str | None:
     if not seconds:
         return None
     return f"{seconds // 3600}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}"
+
+
+def _seconds(hms: str) -> int:
+    """"H:MM:SS" as Sonos reports it -> seconds; 0 if unknown."""
+    try:
+        total = 0
+        for part in hms.split(":"):
+            total = total * 60 + int(part)
+        return total
+    except (AttributeError, ValueError):
+        return 0
 
 
 def build_didl(track: Track, uri: str):
@@ -115,25 +127,55 @@ class SonosController:
 
     # -- playback ----------------------------------------------------------
 
-    def enqueue(self, speaker: str, items: list[tuple[Track, str]], play_now: bool) -> int:
-        """Append tracks to the speaker's queue; optionally start the first.
+    @staticmethod
+    def _volume_target(dev):
+        """A grouped speaker's volume means the group's, like in the Sonos app."""
+        try:
+            group = dev.group
+            if group and len([m for m in group.members if m.is_visible]) > 1:
+                return group
+        except Exception:  # noqa: BLE001
+            pass
+        return dev
 
-        ``items`` are (track, stream URL) pairs. Returns the 1-based queue
-        position of the first added track.
+    def enqueue(self, speaker: str, items: list[tuple[Track, str]], play_now: bool) -> int:
+        """Add tracks to the speaker's queue.
+
+        ``items`` are (track, stream URL) pairs. With ``play_now`` they go
+        right after the current track and playback jumps to the first of them,
+        so whatever was queued before continues afterwards; otherwise they are
+        appended. Returns the 1-based queue position of the first added track.
         """
+        if not items:
+            raise SonosError("Keine Titel zum Abspielen.")
         coord = self._coordinator(self.get(speaker))
+        insert_at = 0  # 0 = append
+        if play_now:
+            try:
+                current = int(coord.get_current_track_info().get("playlist_position") or 0)
+                if 1 <= current <= coord.queue_size:
+                    insert_at = current + 1
+            except Exception:  # noqa: BLE001 - not playing from the queue
+                insert_at = 0
         first = None
         for track, uri in items:
-            pos = coord.add_to_queue(build_didl(track, uri))
+            item = build_didl(track, uri)
+            if insert_at:
+                try:
+                    pos = coord.add_to_queue(item, position=insert_at)
+                    insert_at += 1
+                except Exception:  # noqa: BLE001 - speaker refused the position
+                    insert_at = 0
+                    pos = coord.add_to_queue(item)
+            else:
+                pos = coord.add_to_queue(item)
             if first is None:
                 first = pos
-        if first is None:
-            raise SonosError("Keine Titel zum Abspielen.")
         if play_now:
             coord.play_from_queue(first - 1)
         return first
 
-    def control(self, speaker: str, action: str) -> None:
+    def control(self, speaker: str, action: str, value: int | None = None) -> None:
         coord = self._coordinator(self.get(speaker))
         methods = {
             "play": "play",
@@ -143,26 +185,51 @@ class SonosController:
             "previous": "previous",
             "clear": "clear_queue",
         }
-        if action not in methods:
+        if action in methods:
+            getattr(coord, methods[action])()
+        elif action == "seek":
+            coord.seek(_hms(max(0, int(value))) or "0:00:00")
+        elif action == "play_index":  # 0-based queue index
+            coord.play_from_queue(int(value))
+        elif action == "remove":
+            coord.remove_from_queue(int(value))
+        else:
             raise SonosError(f"Unbekannte Aktion: {action!r}")
-        getattr(coord, methods[action])()
 
     def set_volume(self, speaker: str, volume: int) -> None:
-        self.get(speaker).volume = max(0, min(100, int(volume)))
+        self._volume_target(self.get(speaker)).volume = max(0, min(100, int(volume)))
 
     def status(self, speaker: str) -> dict:
         dev = self.get(speaker)
         coord = self._coordinator(dev)
         info = coord.get_current_track_info()
         transport = coord.get_current_transport_info()
+        uri = info.get("uri") or ""
+        ours = re.search(r"/stream/([A-Za-z0-9_-]{11})\.mp3$", uri)
         return {
             "speaker": dev.player_name,
             "state": transport.get("current_transport_state", ""),
             "title": info.get("title", ""),
             "artist": info.get("artist", ""),
-            "position": info.get("position", ""),
-            "duration": info.get("duration", ""),
+            "position": _seconds(info.get("position", "")),
+            "duration": _seconds(info.get("duration", "")),
             "album_art": info.get("album_art", ""),
-            "queue_position": info.get("playlist_position", ""),
-            "volume": dev.volume,
+            "queue_position": int(info.get("playlist_position") or 0)
+            if str(info.get("playlist_position") or "").isdigit() else 0,
+            "video_id": ours.group(1) if ours else None,
+            "volume": self._volume_target(dev).volume,
         }
+
+    def queue(self, speaker: str) -> list[dict]:
+        coord = self._coordinator(self.get(speaker))
+        out = []
+        for item in coord.get_queue(max_items=300):
+            art = getattr(item, "album_art_uri", "") or ""
+            if art.startswith("/"):  # served by the speaker itself
+                art = f"http://{coord.ip_address}:1400{art}"
+            out.append({
+                "title": getattr(item, "title", "") or "",
+                "artist": getattr(item, "creator", "") or "",
+                "album_art": art,
+            })
+        return out

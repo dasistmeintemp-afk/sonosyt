@@ -159,6 +159,9 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/search":
             q = query.get("q", [""])[0]
             return self._guard(lambda: [t.to_dict() for t in self.app.search(q)])
+        if url.path == "/api/queue":
+            speaker = query.get("speaker", [""])[0]
+            return self._guard(lambda: self.app.sonos.queue(speaker))
         if url.path == "/api/status":
             speaker = query.get("speaker", [""])[0]
             return self._guard(lambda: self.app.sonos.status(speaker))
@@ -191,7 +194,10 @@ class Handler(BaseHTTPRequestHandler):
                 if "volume" in body:
                     self.app.sonos.set_volume(speaker, int(body["volume"]))
                 if body.get("action"):
-                    self.app.sonos.control(speaker, str(body["action"]))
+                    value = body.get("value")
+                    self.app.sonos.control(
+                        speaker, str(body["action"]), None if value is None else int(value)
+                    )
                 return {"ok": True}
             return self._guard(control)
         self._error(404, "not found")

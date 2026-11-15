@@ -6,9 +6,8 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
+import android.view.KeyEvent;
 import android.view.Gravity;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
@@ -47,6 +46,8 @@ import java.util.regex.Pattern;
 public class MainActivity extends Activity {
     private static final int DEFAULT_PORT = 8327;
     private static final String PREF_SERVER = "server_url";
+    /** Link in the web UI (gear icon) that opens the server setup screen. */
+    private static final String SETTINGS_URL = "sonosyt://settings";
     private static final Pattern URL_IN_TEXT = Pattern.compile("https?://\\S+");
 
     private SharedPreferences prefs;
@@ -102,9 +103,16 @@ public class MainActivity extends Activity {
         WebView view = new WebView(this);
         view.getSettings().setJavaScriptEnabled(true);
         view.getSettings().setDomStorageEnabled(true); // remembers the chosen speaker
+        // Tells the web UI it runs inside the app (shows the settings button).
+        view.getSettings().setUserAgentString(
+                view.getSettings().getUserAgentString() + " sonosyt-app");
         view.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, String url) {
+                if (url.startsWith(SETTINGS_URL)) {
+                    showSetup(null);
+                    return true;
+                }
                 String base = server();
                 if (base != null && url.startsWith(base)) {
                     return false;
@@ -165,7 +173,7 @@ public class MainActivity extends Activity {
         address.setImeOptions(EditorInfo.IME_ACTION_GO);
         address.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
-            public boolean onEditorAction(TextView v, int actionId, android.view.KeyEvent event) {
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 tryConnect();
                 return true;
             }
@@ -406,28 +414,23 @@ public class MainActivity extends Activity {
         return m.find() ? m.group() : null;
     }
 
-    // -- menu / navigation ---------------------------------------------------
+    // -- keys / navigation ---------------------------------------------------
 
+    /** While the remote is showing, the phone's volume keys set the Sonos volume. */
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 0, "Neu laden");
-        menu.add(0, 2, 1, "Server ändern");
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == 1) {
-            if (server() != null) {
-                openServer();
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        int code = event.getKeyCode();
+        boolean volumeKey = code == KeyEvent.KEYCODE_VOLUME_UP
+                || code == KeyEvent.KEYCODE_VOLUME_DOWN;
+        if (volumeKey && server() != null && web.getVisibility() == View.VISIBLE) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) { // repeats while held
+                int direction = code == KeyEvent.KEYCODE_VOLUME_UP ? 1 : -1;
+                web.loadUrl("javascript:void(window.sonosytVolumeKey&&sonosytVolumeKey("
+                        + direction + "))");
             }
-            return true;
+            return true; // also swallow ACTION_UP so the phone's own volume stays put
         }
-        if (item.getItemId() == 2) {
-            showSetup(null);
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
+        return super.dispatchKeyEvent(event);
     }
 
     @Override
