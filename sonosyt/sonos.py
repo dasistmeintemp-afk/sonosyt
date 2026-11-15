@@ -57,9 +57,21 @@ class SonosController:
     def _discover(self) -> list:
         import soco
 
-        if self.ips:
-            return [soco.SoCo(ip) for ip in self.ips]
-        return list(soco.discover(timeout=3) or [])
+        if not self.ips:
+            return list(soco.discover(timeout=3) or [])
+        # Fixed addresses (e.g. speakers in another VLAN, where the multicast
+        # search cannot reach them): ask each one for the whole system, so a
+        # single address is enough to find every room.
+        found = {}
+        for ip in self.ips:
+            dev = soco.SoCo(ip)
+            try:
+                zones = list(dev.visible_zones) or [dev]
+            except Exception:  # noqa: BLE001 - unreachable; keep it listed as given
+                zones = [dev]
+            for zone in zones:
+                found.setdefault(zone.ip_address, zone)
+        return list(found.values())
 
     def devices(self, refresh: bool = False) -> list:
         with self._lock:

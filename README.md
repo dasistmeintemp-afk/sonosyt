@@ -83,7 +83,7 @@ sehen, überspringen und pausieren.
 | Option | Bedeutung |
 | --- | --- |
 | `--port 8327` | Port des Servers |
-| `--speaker-ip IP` | Lautsprecher fest vorgeben, falls die automatische Suche nichts findet (z. B. in Docker oder über VLAN-Grenzen); mehrfach möglich |
+| `--speaker-ip IP` | Adresse eines beliebigen Sonos-Lautsprechers vorgeben, falls die automatische Suche nichts findet (z. B. Lautsprecher in einem anderen VLAN); die übrigen Räume werden darüber gefunden |
 | `--public-url URL` | Adresse, unter der die Lautsprecher den Server erreichen, falls die automatische Erkennung nicht passt |
 | `--cache-dir`, `--cache-size-mb 2048` | Ort und Maximalgröße des MP3-Zwischenspeichers |
 | `--bitrate 192k` | MP3-Bitrate |
@@ -97,6 +97,16 @@ sehen, überspringen und pausieren.
    wenigen Sekunden), bekommt Sonos eine vollständige Datei – mit Laufzeit und Spulen.
    Andernfalls wird die noch wachsende Datei live durchgereicht; Spulen geht dann erst beim
    nächsten Abspielen.
+
+## Sonos in einem anderen VLAN
+
+Die automatische Suche funktioniert nur innerhalb eines Netzwerks. Stehen die Lautsprecher in
+einem anderen VLAN als der Server, in `docker-compose.yml` die Zeile `command:` aktivieren und
+die IP eines Lautsprechers eintragen, dann `docker compose up -d`. Zusätzlich muss die Firewall
+zwischen den VLANs erlauben:
+
+- Server → Lautsprecher: TCP-Port 1400 (Steuerung)
+- Lautsprecher → Server: TCP-Port 8327 (Abruf der Musik)
 
 ## Hinweise
 
