@@ -118,6 +118,24 @@ sehen, überspringen und pausieren.
    Andernfalls wird die noch wachsende Datei live durchgereicht; Spulen geht dann erst beim
    nächsten Abspielen.
 
+## Aktualisieren
+
+**Server:** ein Befehl im Ordner des Repositorys. Er holt den neuen Stand, baut das Image und
+startet den Container mit denselben Optionen und demselben Cache wie zuvor:
+
+```sh
+bash update.sh
+```
+
+Die Bedienoberfläche kommt vom Server – die meisten Neuerungen sind damit sofort in der App,
+ohne neue APK. Wer es automatisch möchte, lässt den Befehl regelmäßig laufen (auf Unraid z. B.
+mit dem Plugin „User Scripts").
+
+**App:** Eine neue APK ist nur nötig, wenn sich an der App selbst etwas ändert. Die App zeigt
+dann einen Hinweis mit Download-Knopf. Vollautomatisch geht es mit
+[Obtainium](https://github.com/ImranR98/Obtainium): dort die Adresse dieses Repositorys
+eintragen, dann installiert Obtainium neue Versionen von selbst.
+
 ## Sonos in einem anderen VLAN
 
 Die automatische Suche funktioniert nur innerhalb eines Netzwerks. Stehen die Lautsprecher in
