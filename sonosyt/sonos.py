@@ -62,6 +62,47 @@ def build_didl(track: Track, uri: str):
     )
 
 
+def _group_via_websocket(coordinator_ip: str, coordinator_uid: str, member_uid: str, join: bool) -> None:
+    """Add a player to (or remove it from) a group through Sonos' local control API."""
+    import asyncio
+
+    from sonos_websocket import SonosWebsocket
+
+    async def run() -> None:
+        ws = SonosWebsocket(coordinator_ip)
+        try:
+            await ws.connect()
+            header, data = await ws.get_groups()
+            if not header.get("success"):
+                raise SonosError(f"Gruppen konnten nicht gelesen werden: {data}")
+            groups = data.get("groups") or []
+            if join:
+                group = next(
+                    (g for g in groups if g.get("coordinatorId") == coordinator_uid
+                     or coordinator_uid in (g.get("playerIds") or [])), None)
+                change = {"playerIdsToAdd": [member_uid]}
+            else:
+                group = next((g for g in groups if member_uid in (g.get("playerIds") or [])), None)
+                change = {"playerIdsToRemove": [member_uid]}
+            if not group:
+                raise SonosError("Die Gruppe wurde nicht gefunden.")
+            header, data = await ws.send_command(
+                {
+                    "namespace": "groups:1",
+                    "command": "modifyGroupMembers",
+                    "householdId": await ws.get_household_id(),
+                    "groupId": group["id"],
+                },
+                change,
+            )
+            if not header.get("success"):
+                raise SonosError(f"Sonos hat die Änderung abgelehnt: {data}")
+        finally:
+            await ws.close()
+
+    asyncio.run(run())
+
+
 class SonosController:
     def __init__(self, ips: list[str] | None = None, discovery_ttl: float = 60.0):
         self.ips = ips or []
@@ -266,17 +307,32 @@ class SonosController:
         other = self.get(room)
         if other.ip_address == dev.ip_address:
             raise SonosError("Der gewählte Raum gehört immer dazu.")
+        coordinator = self._coordinator(dev)
         try:
             if join:
-                other.join(self._coordinator(dev))
+                other.join(coordinator)
             else:
                 other.unjoin()
+            return
         except Exception as exc:  # noqa: BLE001 - the speaker refused
-            log.warning("grouping %s with %s failed: %s", room, speaker, exc)
+            log.warning("grouping %s with %s over UPnP failed: %s", room, speaker, exc)
+            upnp_error = exc
+        # Some speakers (e.g. on an older software version than the rest) refuse
+        # the classic command. The Sonos app groups through the speakers' newer
+        # local control interface instead, so try that as well.
+        try:
+            _group_via_websocket(coordinator.ip_address, coordinator.uid, other.uid, join)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("grouping %s with %s over websocket failed: %s", room, speaker, exc)
             raise SonosError(
                 f"{room} lässt sich gerade nicht {'hinzufügen' if join else 'herausnehmen'}"
-                f" – der Lautsprecher hat abgelehnt ({exc})."
+                f" – der Lautsprecher hat abgelehnt ({upnp_error})."
             ) from exc
+        for device in (dev, other, coordinator):  # forget the cached grouping
+            try:
+                device.zone_group_state.clear_cache()
+            except Exception:  # noqa: BLE001
+                pass
 
     def status(self, speaker: str) -> dict:
         dev = self.get(speaker)
