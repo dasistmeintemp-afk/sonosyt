@@ -333,3 +333,22 @@ def test_search_and_playing_queue_convert_ahead(srv):
         time.sleep(0.1)
     assert app.transcoder.cached("bbbbbbbbbbb")  # the upcoming track is ready in time
     assert app.prefetch_next("Küche", sonos.now) is None  # asked once per track
+
+
+def test_info_and_clearing_cache_and_history(srv):
+    base, app, _ = srv
+    call(base + "/api/search?q=beatles")
+    assert call(base + "/api/play", {"speaker": "Küche", "ids": [VID]})[0] == 200  # converts VID
+    info = json.loads(call(base + "/api/info")[2])
+    assert info["version"] and info["ytdlp"]
+    assert info["cache"]["files"] == 1 and info["cache"]["bytes"] > 10_000
+    assert json.loads(call(base + "/api/library")[2])["history"]
+
+    status, _, body = call(base + "/api/cache/clear", {})
+    assert status == 200 and json.loads(body)["removed"] == 1
+    assert json.loads(body)["cache"] == {"files": 0, "bytes": 0, "max_bytes": app.transcoder.max_cache_bytes}
+    assert not app.transcoder.cached(VID)
+    assert json.loads(call(base + "/api/history/clear", {})[2])["history"] == []
+    call(base + f"/stream/{VID}.mp3")  # a cleared track simply converts again on demand
+    app.transcoder.ensure(VID).done.wait(30)
+    assert app.transcoder.cached(VID)

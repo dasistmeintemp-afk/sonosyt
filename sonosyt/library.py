@@ -132,6 +132,11 @@ class Library:
             ]
             self._save()
 
+    def clear_history(self) -> None:
+        with self._lock:
+            self._history = []
+            self._save()
+
     def recent_ids(self) -> set[str]:
         with self._lock:
             return {t.id for t in self._history}

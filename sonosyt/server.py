@@ -56,6 +56,7 @@ class App:
         self._extended: dict[str, str] = {}  # speaker -> video autoplay last handled
         self._active: dict[str, float] = {}  # speaker -> when it was last played to
         self._next_checked: dict[str, tuple] = {}
+        self._ytdlp: tuple[float, str] | None = None
         self.remember(self.library.tracks())
 
     # -- tracks --------------------------------------------------------------
@@ -119,6 +120,16 @@ class App:
         status = self.sonos.status(speaker)
         status["autoplay"] = self.library.autoplay(speaker)
         return status
+
+    def info(self) -> dict:
+        """Facts for the settings screen."""
+        now = time.monotonic()
+        if not self._ytdlp or now - self._ytdlp[0] > 600:
+            from .updater import ytdlp_version
+
+            self._ytdlp = (now, ytdlp_version())
+        return {"version": __version__, "ytdlp": self._ytdlp[1],
+                "cache": self.transcoder.cache_info()}
 
     # -- autoplay ------------------------------------------------------------
 
@@ -283,6 +294,8 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/rooms":
             speaker = query.get("speaker", [""])[0]
             return self._guard(lambda: self.app.sonos.rooms(speaker))
+        if url.path == "/api/info":
+            return self._guard(self.app.info)
         if url.path == "/api/library":
             return self._guard(self.app.library.snapshot)
         self._error(404, "not found")
@@ -333,6 +346,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.app.library.set_favorite(track, bool(body.get("favorite", True)))
                 return self.app.library.snapshot()
             return self._guard(favorite)
+        if path == "/api/cache/clear":
+            def clear_cache():
+                self._body()
+                removed = self.app.transcoder.clear_cache()
+                return {"removed": removed, **self.app.info()}
+            return self._guard(clear_cache)
+        if path == "/api/history/clear":
+            def clear_history():
+                self._body()
+                self.app.library.clear_history()
+                return self.app.library.snapshot()
+            return self._guard(clear_history)
         if path == "/api/playlist":
             def playlist():
                 body = self._body()

@@ -64,8 +64,9 @@ Danach:
   Musik läuft, auch bei gesperrtem Bildschirm (bei gruppierten Räumen die der ganzen Gruppe).
 - **Benachrichtigung und Sperrbildschirm** zeigen den laufenden Titel mit Pause und
   Titel vor/zurück. Läuft 15 Minuten nichts, verschwindet die Benachrichtigung wieder.
-- **Große Wiedergabe-Ansicht:** Ein Tipp auf den laufenden Titel unten öffnet sie – mit Cover,
-  Spulen, Lautstärke, Favorit, ähnlichen Titeln und Playlist.
+- **Große Wiedergabe-Ansicht:** Ein Tipp auf den laufenden Titel unten öffnet sie – mit Spulen,
+  Lautstärke, Favorit, ähnlichen Titeln und Playlist. Dort läuft das Video stumm und synchron
+  zum Ton der Lautsprecher mit (bei Videos, die YouTube nicht einbetten lässt, bleibt das Cover).
 - **Unten:** Spulen, Pause, Titel vor/zurück, Lautstärke und die Warteschlange (Titel am
   Griff rechts verschieben, antippen zum Springen). Dort gibt es
   auch Zufall, Wiederholen, Autoplay (nach dem letzten Titel läuft passende Musik weiter)
@@ -74,7 +75,9 @@ Danach:
   regeln.
 - **Livestreams** (z. B. Lofi-Radio) sind in der Suche mit „LIVE" markiert und laufen endlos.
 - Die Zurück-Taste schließt geöffnete Fenster und führt von Trefferlisten zur Startseite.
-- Das Zahnrad oben rechts ändert die Server-Adresse.
+- **Einstellungen** (Zahnrad oben rechts): helles/dunkles Design, Akzentfarbe, Video an/aus und
+  Versatz, Verhalten beim Antippen, Schritt der Lautstärketasten, Autoplay, Vibration,
+  Verläufe und Zwischenspeicher leeren, Server-Adresse ändern.
 
 Die APK wird bei jeder Änderung unter `android/` automatisch von GitHub Actions gebaut.
 Selbst bauen: `cd android && ./gradlew assembleRelease` (benötigt das Android SDK).
