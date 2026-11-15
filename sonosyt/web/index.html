@@ -274,7 +274,20 @@
   /* On the tinted backdrop, secondary text needs more weight to stay readable. */
   .player.expanded { --muted: color-mix(in srgb, var(--text) 74%, transparent);
                      --line: color-mix(in srgb, var(--text) 22%, transparent); }
-  .player.expanded .inner { height: 100%; max-width: 520px; display: flex; flex-direction: column; }
+  .player.expanded .inner { min-height: 100%; max-width: 520px; display: flex; flex-direction: column; }
+  .player.expanded { overflow-y: auto; }
+  @media (max-height: 700px) {   /* short phones: tighter, so everything fits without scrolling */
+    .player.expanded #nowMeta { margin: 14px 0 2px; }
+    .player.expanded #nowTitle { font-size: 1.1875rem; }
+    .player.expanded .transport { margin: 4px 0; }
+    .player.expanded .transport #toggle { width: 66px; height: 66px; }
+    .player.expanded #npExtras { margin-top: 6px; }
+    .player.expanded #npHead { height: 40px; }
+  }
+  @media (orientation: landscape) and (max-height: 520px) {
+    .player.expanded #art, .player.expanded #noart, .player.expanded.video #npVideo {
+      max-width: 52vh; align-self: center; }
+  }
   .player.expanded .np-only { display: flex; }
   .player.expanded .now { display: contents; }
   .player.expanded #npHead { order: 0; align-items: center; gap: 8px; height: 48px; margin: 0 -10px; }
@@ -875,14 +888,18 @@ $('retry').onclick = () => loadSpeakers(true);
 const isFavorite = (id) => library.favorites.some((t) => t.id === id);
 const playlist = (name) => library.playlists.find((p) => p.name === name);
 
+let libraryKey = '';
 function applyLibrary(data) {
+  const key = JSON.stringify(data);
+  if (key === libraryKey) return;   // nothing new: leave lists and their scroll positions alone
+  libraryKey = key;
   library = {favorites: [], history: [], playlists: [], ...data};
   if (view.kind === 'playlist') {
     const current = playlist(view.name);
     if (!current) return leaveResults();
     results = current.tracks;
     renderResults();
-  } else if (view.kind === 'search') {
+  } else if (view.kind !== 'home') {
     renderResults();
   }
   renderHome();
@@ -946,6 +963,7 @@ function playlistCard(p) {
 }
 
 function showHome() {
+  searchSeq++;   // a search still on its way must not reopen the result list
   view = {kind: 'home'};
   results = [];
   $('q').value = '';
@@ -955,6 +973,7 @@ function showHome() {
   loading(false);
   $('home').hidden = !$('noSpeakers').hidden;
   renderHome();
+  loadLibrary();   // autoplay may have added to the history meanwhile
 }
 
 function showResults(label, withAll) {
@@ -973,6 +992,7 @@ function showResults(label, withAll) {
 function openPlaylist(name) {
   const p = playlist(name);
   if (!p) return;
+  searchSeq++;
   view = {kind: 'playlist', name};
   results = p.tracks;
   $('q').value = '';
@@ -1002,6 +1022,7 @@ function remember(term) {
   store('recent', recent.slice(0, 8));
 }
 
+let searchSeq = 0;
 async function search() {
   const term = $('q').value.trim();
   $('clear').hidden = !term;
@@ -1013,14 +1034,17 @@ async function search() {
   $('home').hidden = true;
   $('resultsBox').hidden = true;
   loading(true);
+  const seq = ++searchSeq;
   let found;
   try {
     found = await api('/api/search?q=' + encodeURIComponent(term));
   } catch (e) {
+    if (seq !== searchSeq) return;
     loading(false);
     if (view.kind === 'home') showHome(); else $('resultsBox').hidden = false;
     return toast(e.message, true);
   }
+  if (seq !== searchSeq) return;   // a newer search or view has taken over
   if (!found.length) {
     loading(false);
     if (view.kind === 'home') { showHome(); $('q').value = term; $('clear').hidden = false; }
@@ -1037,6 +1061,7 @@ async function search() {
 }
 
 async function showRelated(t) {
+  const seq = ++searchSeq;
   $('q').value = ''; $('clear').hidden = true;
   $('home').hidden = true;
   $('resultsBox').hidden = true;
@@ -1044,7 +1069,8 @@ async function showRelated(t) {
   window.scrollTo(0, 0);
   let found = [];
   try { found = await api('/api/related?id=' + encodeURIComponent(t.id)); }
-  catch (e) { toast(e.message, true); }
+  catch (e) { if (seq === searchSeq) toast(e.message, true); }
+  if (seq !== searchSeq) return;
   if (!found.length) {
     loading(false);
     if (view.kind === 'home') showHome(); else $('resultsBox').hidden = false;
@@ -1378,12 +1404,14 @@ function paint() {
   if (cover) {
     if ($('art').dataset.want !== cover) {
       $('art').dataset.want = cover;
+      $('art').dataset.broken = '';
       $('art').dataset.fallback = s.video_id ? (s.album_art || '') : '';
       $('art').src = cover;
       $('npBg').style.backgroundImage = `url("${cover}")`;
     }
     $('art').classList.toggle('square', !s.video_id);
-    $('art').hidden = false; $('noart').hidden = true;
+    const broken = $('art').dataset.broken === '1';
+    $('art').hidden = broken; $('noart').hidden = !broken;
   } else {
     $('art').dataset.want = '';
     $('npBg').style.backgroundImage = '';
@@ -1417,7 +1445,7 @@ function paint() {
   syncVideo();
 }
 
-$('art').onerror = () => {
+function coverFailed() {
   const fallback = $('art').dataset.fallback;
   if (fallback && $('art').src !== fallback) {   // no widescreen cover for this video
     $('art').dataset.fallback = '';
@@ -1425,8 +1453,12 @@ $('art').onerror = () => {
     $('npBg').style.backgroundImage = `url("${fallback}")`;
     return;
   }
+  $('art').dataset.broken = '1';
   $('art').hidden = true; $('noart').hidden = false;
-};
+}
+$('art').onerror = coverFailed;
+// For a missing cover YouTube answers with a tiny grey placeholder instead of an error.
+$('art').onload = () => { if ($('art').naturalWidth <= 120 && $('art').dataset.fallback) coverFailed(); };
 
 // ---- video in the full-screen player -----------------------------------------------------
 
@@ -1514,7 +1546,8 @@ $('npClose').onclick = () => { if (here() === 'player') history.back(); else col
 // Swiping down anywhere but on a slider closes the full-screen player.
 let swipe = null;
 $('player').addEventListener('touchstart', (e) => {
-  const open = $('player').classList.contains('expanded') && here() === 'player';
+  const open = $('player').classList.contains('expanded') && here() === 'player'
+    && $('player').scrollTop === 0;   // while scrolled, a downward drag just scrolls back
   swipe = open && !e.target.closest('input, #npVideo iframe')
     ? {x: e.touches[0].clientX, y: e.touches[0].clientY} : null;
 }, {passive: true});
@@ -1603,14 +1636,18 @@ window.sonosytVolumeKey = (direction) => {
 
 // ---- queue -------------------------------------------------------------------------------
 
+let queueKey = '';
 async function loadQueue(fresh) {
   let items = [];
   try { items = await api('/api/queue?speaker=' + encodeURIComponent(speaker())); }
   catch (e) { return toast(e.message, true); }
   if (dragging) return;
+  const current = status ? status.queue_position : 0;
+  const key = JSON.stringify(items) + '|' + current;
+  if (!fresh && key === queueKey) return;   // unchanged: keep the list (and its scroll) as it is
+  queueKey = key;
   $('queueEmpty').hidden = items.length > 0;
   $('clearQueue').hidden = !items.length;
-  const current = status ? status.queue_position : 0;
   $('queue').replaceChildren(...items.map((t, i) => {
     const li = el('li', 'track' + (i + 1 === current ? ' current' : ''));
     const main = el('button', 'main');
@@ -1629,7 +1666,7 @@ async function loadQueue(fresh) {
     const remove = el('button', 'icon-btn');
     remove.setAttribute('aria-label', `${t.title} aus der Warteschlange entfernen`);
     remove.append(icon('close'));
-    remove.onclick = async () => { li.remove(); await control('remove', i); loadQueue(); };
+    remove.onclick = async () => { li.remove(); queueKey = ''; await control('remove', i); loadQueue(); };
     const handle = el('button', 'icon-btn handle');
     handle.setAttribute('aria-label', `${t.title} verschieben`);
     handle.append(icon('drag'));
@@ -1676,6 +1713,7 @@ function enableDrag(handle, li, index) {
       clearMarks();
       li.classList.remove('dragging');
       li.style.transform = '';
+      queueKey = '';
       if (up.type === 'pointerup' && target !== index) {
         // Show the new order at once; the speaker confirms it right after.
         $('queue').insertBefore(li, others[target] || null);
@@ -1969,7 +2007,10 @@ loadLibrary();
 checkAppUpdate();
 setInterval(refreshStatus, 3000);
 setInterval(() => { if (status && status.state === 'PLAYING' && !document.hidden) paint(); }, 1000);
-document.addEventListener('visibilitychange', refreshStatus);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopVideo();   // no hidden video eating data and battery
+  else { refreshStatus(); loadLibrary(); }
+});
 
 (async () => {
   await loadSpeakers(false);

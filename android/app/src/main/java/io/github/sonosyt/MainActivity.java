@@ -98,7 +98,14 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        web.onResume();
         startPlaybackService();
+    }
+
+    @Override
+    protected void onPause() {
+        web.onPause(); // stops the video and page activity while the app is not in front
+        super.onPause();
     }
 
     /** Starts (or wakes) the background controls once server and room are known. */

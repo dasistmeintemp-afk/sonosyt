@@ -28,6 +28,7 @@ def ytdlp_source_cmd(video_id: str) -> list[str]:
     return [
         sys.executable, "-m", "yt_dlp",
         "--quiet", "--no-warnings", "--no-playlist",
+        "--socket-timeout", "30",  # a stalled download fails instead of hanging forever
         "-f", "bestaudio/best",
         "-o", "-",
         "--", watch_url(video_id),
@@ -39,6 +40,7 @@ def ytdlp_live_url_cmd(video_id: str) -> list[str]:
     return [
         sys.executable, "-m", "yt_dlp",
         "--quiet", "--no-warnings", "--no-playlist",
+        "--socket-timeout", "30",
         # Livestreams have no audio-only variant; a small picture is enough.
         "-f", "bestaudio/best[height<=360]/best",
         "--get-url",

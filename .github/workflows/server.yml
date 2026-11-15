@@ -26,6 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t sonosyt .
+      - name: Tools inside the image
+        run: |
+          docker run --rm --entrypoint deno sonosyt --version
+          docker run --rm --entrypoint ffmpeg sonosyt -version | head -1
+          docker run --rm --entrypoint python sonosyt -m yt_dlp --version
       - name: Container answers
         run: |
           docker run -d --name sonosyt -p 8327:8327 sonosyt
