@@ -417,3 +417,36 @@ def test_more_results_bulk_playlists_eq_and_diagnose(srv, monkeypatch):
                          "stream_base": f"http://10.0.0.2:{app.port}"}
     call(base + f"/stream/{VID}.mp3")
     assert json.loads(call(base + "/api/diagnose?speaker=K%C3%BCche")[2])["fetched_ago"] <= 5
+
+
+def test_foreign_host_names_are_refused(srv):
+    from sonosyt.server import host_allowed
+
+    base, app, _ = srv
+    for ok in (None, "", "192.168.1.49:8327", "192.168.1.49", "localhost:8327", "tower", "tower.local:8327",
+               "nas.fritz.box", "[fe80::1]:8327", "TOWER.LOCAL"):
+        assert host_allowed(ok), ok
+    for bad in ("evil.example.com", "evil.example.com:8327", "192.168.1.49.evil.net"):
+        assert not host_allowed(bad), bad
+    assert host_allowed("music.example.org:443", frozenset({"music.example.org"}))
+
+    status, _, body = call(base + "/api/speakers", headers={"Host": "evil.example.com"})
+    assert status == 403 and "--allow-host" in json.loads(body)["error"]
+    assert call(base + "/api/control", {"speaker": "Küche", "action": "pause"},
+                headers={"Host": "evil.example.com"})[0] == 403
+    assert call(base + "/api/speakers", headers={"Host": "tower.local:8327"})[0] == 200
+
+
+def test_unplayable_video_is_reported_instead_of_silently_queued(srv):
+    import sys
+    from sonosyt.server import playback_error
+
+    base, app, sonos = srv
+    app.transcoder.source_cmd = lambda vid: [sys.executable, "-c", (
+        "import sys; sys.exit('WARNING: something\\nERROR: [youtube] abcdefghijk: Sign in to confirm your age')")]
+    call(base + "/api/search?q=beatles")
+    status, _, body = call(base + "/api/play", {"speaker": "Küche", "ids": [VID]})
+    assert status == 502
+    assert json.loads(body)["error"] == "Dieses Video lässt sich nicht abspielen: Sign in to confirm your age"
+    assert sonos.enqueued == []
+    assert playback_error("") == "Dieses Video lässt sich nicht abspielen: unbekannter Fehler"

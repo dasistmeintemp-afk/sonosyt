@@ -120,6 +120,7 @@ sehen, überspringen und pausieren.
 | `--public-url URL` | Adresse, unter der die Lautsprecher den Server erreichen, falls die automatische Erkennung nicht passt |
 | `--cache-dir`, `--cache-size-mb 2048` | Ort und Maximalgröße des MP3-Zwischenspeichers |
 | `--bitrate 192k` | MP3-Bitrate |
+| `--allow-host NAME` | Zusätzlicher Hostname, unter dem der Server aufgerufen werden darf. IP-Adressen und lokale Namen (z. B. `tower.local`) sind immer erlaubt; fremde Namen werden zum Schutz vor Zugriffen von Webseiten abgelehnt |
 | `--auto-update` | yt-dlp beim Start und danach täglich aktualisieren (im Docker-Image eingeschaltet) |
 
 ## Wie es funktioniert

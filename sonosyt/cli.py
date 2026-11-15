@@ -56,6 +56,7 @@ def cmd_serve(args) -> int:
         sonos=SonosController(ips=args.speaker_ip),
         port=args.port,
         public_url=args.public_url,
+        allowed_hosts=args.allow_host,
     )
     app.start_autoplay()
     if args.auto_update:
@@ -131,6 +132,11 @@ def main(argv: list[str] | None = None) -> int:
         "--public-url", metavar="URL",
         help="Adresse, unter der die Lautsprecher diesen Server erreichen "
         "(Standard: automatisch, http://<LAN-IP>:<port>)",
+    )
+    p.add_argument(
+        "--allow-host", action="append", metavar="NAME",
+        help="zusätzlicher Hostname, unter dem der Server aufgerufen werden darf "
+        "(IP-Adressen und lokale Namen wie tower.local sind immer erlaubt)",
     )
     p.add_argument("--cache-dir", default=_default_cache_dir())
     p.add_argument("--cache-size-mb", type=int, default=2048)

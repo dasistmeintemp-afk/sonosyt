@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
 import re
@@ -22,6 +23,38 @@ from .youtube import Track, YouTubeError
 
 log = logging.getLogger(__name__)
 
+# Host names a browser may use for this server. Anything else is refused, so a
+# website that points its own domain at the server's address ("DNS rebinding")
+# cannot control the speakers from a visitor's browser.
+LOCAL_SUFFIXES = (".local", ".lan", ".home", ".internal", ".home.arpa", ".localdomain",
+                  ".fritz.box", ".box")
+
+
+def host_allowed(header: str | None, extra: frozenset[str] = frozenset()) -> bool:
+    if not header:
+        return True  # HTTP/1.0 clients such as some speakers send none
+    host = header.strip().lower()
+    if host.startswith("["):  # IPv6 literal
+        return True
+    host = host.rsplit(":", 1)[0] if ":" in host else host
+    if not host or "." not in host or host in extra or host.endswith(LOCAL_SUFFIXES):
+        return True
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        return False
+
+
+def playback_error(detail: str) -> str:
+    """One readable line from yt-dlp/ffmpeg output."""
+    lines = [line.strip() for line in (detail or "").splitlines() if line.strip()]
+    errors = [line for line in lines if line.startswith("ERROR:")]
+    line = (errors or lines or ["unbekannter Fehler"])[0]
+    line = re.sub(r"^ERROR:\s*(\[[^\]]+\]\s*)?([A-Za-z0-9_-]{11}:\s*)?", "", line)
+    return f"Dieses Video lässt sich nicht abspielen: {line[:200]}"
+
+
 STREAM_RE = re.compile(r"^/(stream|live)/([A-Za-z0-9_-]{11})\.mp3$")
 AUTOPLAY_INTERVAL = 8.0
 MAX_BODY = 64 * 1024
@@ -41,8 +74,13 @@ class App:
         library: Library | None = None,
         related=youtube.related,
         suggest=youtube.suggest,
+        allowed_hosts: list[str] | None = None,
     ):
         self.suggest = suggest
+        hosts = {h.strip().lower() for h in allowed_hosts or [] if h.strip()}
+        if public_url:
+            hosts.add((urlsplit(public_url).hostname or "").lower())
+        self.allowed_hosts = frozenset(hosts)
         self.transcoder = transcoder
         self.sonos = sonos
         self.port = port
@@ -108,7 +146,10 @@ class App:
         if mode == "now" and not tracks[0].live:
             # Short videos finish converting within seconds; then Sonos gets a
             # complete file (with duration and seeking) instead of a live stream.
-            self.transcoder.ensure(tracks[0].id).done.wait(self.prefetch_wait)
+            job = self.transcoder.ensure(tracks[0].id)
+            job.done.wait(self.prefetch_wait)
+            if job.done.is_set() and job.error:  # e.g. removed, private or age-restricted
+                raise YouTubeError(playback_error(job.error))
         # The next few are converted ahead; later ones follow as playback gets there.
         self.transcoder.prefetch([t.id for t in tracks if not t.live][:4])
         items = [(t, self.stream_url(t, device.ip_address)) for t in tracks]
@@ -300,7 +341,11 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
         except Exception as exc:  # noqa: BLE001 - e.g. SoCo/UPnP errors
-            log.exception("request failed")
+            if isinstance(exc, OSError) or exc.__class__.__module__.startswith(("soco", "requests")):
+                # A speaker that is off or busy is everyday business, not a crash.
+                log.warning("%s failed: %s: %s", self.path, exc.__class__.__name__, exc)
+            else:
+                log.exception("request failed")
             self._error(500, f"{exc.__class__.__name__}: {exc}")
 
     # -- routing -----------------------------------------------------------
@@ -308,7 +353,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_HEAD(self):
         self.do_GET()
 
+    def _refuse_foreign_host(self) -> bool:
+        if host_allowed(self.headers.get("Host"), self.app.allowed_hosts):
+            return False
+        self._error(403, "Dieser Hostname ist nicht freigegeben. Den Server über seine IP-Adresse "
+                         "aufrufen oder mit --allow-host <name> starten.")
+        return True
+
     def do_GET(self):
+        if self._refuse_foreign_host():
+            return
         url = urlsplit(self.path)
         query = parse_qs(url.query)
         m = STREAM_RE.match(url.path)
@@ -356,6 +410,8 @@ class Handler(BaseHTTPRequestHandler):
         self._error(404, "not found")
 
     def do_POST(self):
+        if self._refuse_foreign_host():
+            return
         path = urlsplit(self.path).path
         # Browsers cannot send JSON cross-site without a CORS preflight, which
         # this server never answers - so other websites can't drive the speakers.
