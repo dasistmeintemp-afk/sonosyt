@@ -24,6 +24,23 @@ class FakeSpeaker:
         self.group.coordinator = self
 
         self.position = "0"
+        self.play_mode = "NORMAL"
+        self.shuffle = False
+        self.repeat = False
+        self.sleep = None
+        self.joined = "unset"
+
+    def get_sleep_timer(self):
+        return self.sleep
+
+    def set_sleep_timer(self, seconds):
+        self.sleep = seconds
+
+    def join(self, master):
+        self.joined = master
+
+    def unjoin(self):
+        self.joined = None
 
     @property
     def queue_size(self):
@@ -193,3 +210,54 @@ def test_fixed_ip_expands_to_all_rooms(monkeypatch):
     # A speaker that cannot report the system is still listed as given.
     names = [s["name"] for s in SonosController(ips=["10.0.0.9", "10.0.0.5"]).speakers()]
     assert names == ["Bad", "Küche", "Wohnzimmer"]
+
+
+def test_shuffle_repeat_and_sleep_timer(setup):
+    ctl, kitchen, _ = setup
+    ctl.control("Wohnzimmer", "shuffle", 1)
+    ctl.control("Wohnzimmer", "repeat", 2)
+    assert kitchen.shuffle is True and kitchen.repeat == "ONE"
+    ctl.control("Küche", "repeat", 0)
+    assert kitchen.repeat is False
+    with pytest.raises(SonosError):
+        ctl.control("Küche", "repeat", 7)
+    ctl.control("Küche", "sleep", 30)
+    assert kitchen.sleep == 1800 and ctl.status("Küche")["sleep"] == 1800
+    ctl.control("Küche", "sleep", 0)
+    assert kitchen.sleep is None and ctl.status("Küche")["sleep"] == 0
+    kitchen.play_mode = "SHUFFLE_REPEAT_ONE"
+    status = ctl.status("Küche")
+    assert (status["shuffle"], status["repeat"]) == (True, 2)
+    kitchen.play_mode = "SHUFFLE_NOREPEAT"
+    assert (ctl.status("Küche")["shuffle"], ctl.status("Küche")["repeat"]) == (True, 0)
+
+
+def test_rooms_grouping_and_single_room_volume(setup, monkeypatch):
+    ctl, kitchen, living = setup
+    bath = FakeSpeaker("Bad", "10.0.0.7")
+    monkeypatch.setattr(ctl, "_discover", lambda: [living, kitchen, bath])
+    ctl.devices(refresh=True)
+    assert ctl.rooms("Wohnzimmer") == [
+        {"name": "Bad", "volume": 20, "grouped": False, "selected": False},
+        {"name": "Küche", "volume": 20, "grouped": True, "selected": False},
+        {"name": "Wohnzimmer", "volume": 20, "grouped": True, "selected": True},
+    ]
+    ctl.group("Wohnzimmer", "Bad", True)
+    assert bath.joined is kitchen  # joins the coordinator of the selected room's group
+    ctl.group("Wohnzimmer", "Küche", False)
+    assert kitchen.joined is None
+    with pytest.raises(SonosError):
+        ctl.group("Küche", "Küche", False)
+    ctl.set_volume("Wohnzimmer", 40, single=True)
+    assert living.volume == 40 and kitchen.group.volume == 33
+
+
+def test_live_tracks_have_no_duration_and_are_recognised(setup):
+    from soco.data_structures import to_didl_string
+
+    ctl, kitchen, _ = setup
+    item = build_didl(Track("ccccccccccc", "Radio", "Chan", None, live=True), "http://h/live/ccccccccccc.mp3")
+    assert "duration=" not in to_didl_string(item)
+    kitchen.get_current_track_info = lambda: {"uri": "http://h/live/ccccccccccc.mp3", "playlist_position": "1"}
+    status = ctl.status("Küche")
+    assert status["live"] is True and status["video_id"] == "ccccccccccc"

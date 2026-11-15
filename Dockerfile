@@ -12,4 +12,4 @@ RUN pip install --no-cache-dir .
 
 VOLUME /cache
 EXPOSE 8327
-ENTRYPOINT ["sonosyt", "serve", "--cache-dir", "/cache"]
+ENTRYPOINT ["sonosyt", "serve", "--cache-dir", "/cache", "--auto-update"]

@@ -33,6 +33,18 @@ def ytdlp_source_cmd(video_id: str) -> list[str]:
     ]
 
 
+def ytdlp_live_url_cmd(video_id: str) -> list[str]:
+    """Command that prints the stream (HLS) URL of a running livestream."""
+    return [
+        sys.executable, "-m", "yt_dlp",
+        "--quiet", "--no-warnings", "--no-playlist",
+        # Livestreams have no audio-only variant; a small picture is enough.
+        "-f", "bestaudio/best[height<=360]/best",
+        "--get-url",
+        "--", watch_url(video_id),
+    ]
+
+
 class Job:
     """One video being (or having been) converted."""
 
@@ -89,7 +101,9 @@ class Transcoder:
         max_cache_bytes: int = 2 * 1024**3,
         source_cmd: Callable[[str], list[str]] = ytdlp_source_cmd,
         ffmpeg: str = "ffmpeg",
+        live_url_cmd: Callable[[str], list[str]] = ytdlp_live_url_cmd,
     ):
+        self.live_url_cmd = live_url_cmd
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.bitrate = bitrate
@@ -136,6 +150,45 @@ class Transcoder:
             target=self._run, args=(job,), name=f"transcode-{video_id}", daemon=True
         ).start()
         return job
+
+    def live(self, video_id: str, chunk_size: int = 16 * 1024) -> Iterator[bytes]:
+        """MP3 audio of a running livestream, until the consumer stops.
+
+        Nothing is cached: ffmpeg reads the stream and is killed as soon as
+        the generator is closed (the speaker disconnected).
+        """
+        watch_url(video_id)  # validates the id
+        found = subprocess.run(
+            self.live_url_cmd(video_id), capture_output=True, text=True, timeout=90
+        )
+        urls = [line for line in found.stdout.splitlines() if line.strip()]
+        if found.returncode != 0 or not urls:
+            lines = (found.stderr or "").strip().splitlines()
+            raise RuntimeError(lines[-1] if lines else "Livestream nicht verfügbar")
+        ffmpeg = subprocess.Popen(
+            [
+                self.ffmpeg, "-nostdin", "-hide_banner", "-loglevel", "error",
+                "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
+                "-i", urls[0],
+                "-vn", "-map_metadata", "-1",
+                "-c:a", "libmp3lame", "-b:a", self.bitrate, "-ar", "44100", "-ac", "2",
+                "-f", "mp3", "pipe:1",
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        try:
+            while True:
+                data = ffmpeg.stdout.read(chunk_size)
+                if not data:
+                    return
+                yield data
+        finally:
+            if ffmpeg.poll() is None:
+                ffmpeg.kill()
+            ffmpeg.wait()
+            ffmpeg.stdout.close()
 
     def _run(self, job: Job) -> None:
         source = ffmpeg = None

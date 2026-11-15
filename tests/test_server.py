@@ -23,6 +23,7 @@ class FakeSonos:
     def __init__(self):
         self.enqueued = []
         self.controls = []
+        self.now = {"state": "PLAYING"}
 
     def speakers(self, refresh=False):
         return [{"name": "Küche", "ip": "10.0.0.5", "group": ["Küche"]}]
@@ -43,12 +44,18 @@ class FakeSonos:
         self.get(speaker)
         return [{"title": "Song", "artist": "Chan", "album_art": ""}]
 
-    def set_volume(self, speaker, volume):
-        self.controls.append((speaker, "volume", volume))
+    def set_volume(self, speaker, volume, single=False):
+        self.controls.append((speaker, "volume", volume) + (("single",) if single else ()))
 
     def status(self, speaker):
         self.get(speaker)
-        return {"state": "PLAYING"}
+        return dict(self.now)
+
+    def rooms(self, speaker):
+        return [{"name": "Küche", "volume": 20, "grouped": True, "selected": True}]
+
+    def group(self, speaker, room, join):
+        self.controls.append((speaker, "group", room, join))
 
 
 @pytest.fixture
@@ -63,6 +70,10 @@ def srv(tmp_path, monkeypatch):
     app = App(
         Transcoder(tmp_path, source_cmd=tone_cmd()), sonos, port=0,
         lookup=lambda q: catalog.get(q, []), prefetch_wait=30,
+        related=lambda vid: [
+            Track("llllllllll1", "Live", live=True), Track("bbbbbbbbbbb", "Other"),
+            Track("ddddddddddd", "Fresh"),
+        ],
     )
     httpd = make_server(app, "127.0.0.1")
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
@@ -92,7 +103,7 @@ def test_ui_and_search(srv):
     status, _, body = call(base + "/api/search?q=beatles")
     assert status == 200
     assert json.loads(body)[0] == {
-        "id": VID, "title": "Song", "uploader": "Chan", "duration": 1,
+        "id": VID, "title": "Song", "uploader": "Chan", "duration": 1, "live": False,
         "thumbnail": f"https://i.ytimg.com/vi/{VID}/hqdefault.jpg",
     }
 
@@ -175,3 +186,92 @@ def test_stream_rejects_bad_paths(srv):
     base, _, _ = srv
     assert call(base + "/stream/short.mp3")[0] == 404
     assert call(base + "/stream/..%2F..%2Fetc%2Fpasswd")[0] == 404
+
+
+def test_favorites_and_history_survive_a_restart(srv, tmp_path):
+    base, app, _ = srv
+    call(base + "/api/search?q=beatles")
+    assert call(base + "/api/play", {"speaker": "Küche", "ids": ["bbbbbbbbbbb"], "queue": True})[0] == 200
+    status, _, body = call(base + "/api/favorite", {"id": VID})
+    assert status == 200 and [t["id"] for t in json.loads(body)["favorites"]] == [VID]
+    library = json.loads(call(base + "/api/library")[2])
+    assert [t["id"] for t in library["history"]] == ["bbbbbbbbbbb"]
+    assert call(base + "/api/favorite", {"id": "nope"})[0] == 400
+
+    from sonosyt.library import Library
+    reloaded = Library(app.library.path)
+    assert [t.id for t in reloaded.tracks()] == [VID, "bbbbbbbbbbb"]
+    assert call(base + "/api/favorite", {"id": VID, "favorite": False})[0] == 200
+    assert json.loads(call(base + "/api/library")[2])["favorites"] == []
+
+
+def test_autoplay_queues_a_fresh_related_track_once(srv):
+    base, app, sonos = srv
+    sonos.now = {"state": "PLAYING", "video_id": VID, "queue_position": 2, "queue_length": 2,
+                 "repeat": 0, "live": False}
+    assert call(base + "/api/autoplay", {"speaker": "Küche", "on": True})[0] == 200
+    assert json.loads(call(base + "/api/status?speaker=K%C3%BCche")[2])["autoplay"] is True
+    app.library.played([Track("bbbbbbbbbbb", "Other")])  # heard recently: skipped
+
+    assert app.autoplay_once("Küche").id == "ddddddddddd"  # not the live one, not the recent one
+    speaker, items, play_now = sonos.enqueued[-1]
+    assert items[0][1].endswith("/stream/ddddddddddd.mp3") and play_now is False
+    assert app.autoplay_once("Küche") is None  # same track still playing: nothing new
+    assert len(sonos.enqueued) == 1
+
+    for change in ({"queue_position": 1}, {"state": "PAUSED_PLAYBACK"}, {"repeat": 1}, {"video_id": None}):
+        sonos.now = {**sonos.now, "video_id": "bbbbbbbbbbb", "queue_position": 2, **change}
+        assert app.autoplay_once("Küche") is None
+    assert call(base + "/api/autoplay", {"speaker": "Bad", "on": True})[0] == 404
+
+
+def test_rooms_group_and_single_volume(srv):
+    base, _, sonos = srv
+    assert json.loads(call(base + "/api/rooms?speaker=K%C3%BCche")[2])[0]["name"] == "Küche"
+    assert call(base + "/api/group", {"speaker": "Küche", "room": "Bad", "join": True})[0] == 200
+    assert call(base + "/api/control", {"speaker": "Küche", "volume": 12, "single": True})[0] == 200
+    assert sonos.controls == [("Küche", "group", "Bad", True), ("Küche", "volume", 12, "single")]
+
+
+def test_live_stream_is_piped_and_ffmpeg_stops_with_the_listener(srv):
+    import http.client
+    import subprocess
+    import time
+
+    base, app, sonos = srv
+    # Stands in for "yt-dlp --get-url": an endless generated tone as the stream source.
+    app.transcoder.live_url_cmd = lambda vid: ["echo", "anullsrc"]
+    real = subprocess.Popen
+    started = []
+
+    def popen(cmd, **kwargs):
+        if "anullsrc" in cmd and "-i" in cmd:  # swap the URL input for a real-time generated signal
+            i = cmd.index("-i")
+            cmd = [cmd[0], "-nostdin", "-loglevel", "error", "-re", "-f", "lavfi",
+                   "-i", "sine=frequency=440"] + cmd[i + 2:]
+        proc = real(cmd, **kwargs)
+        started.append(proc)
+        return proc
+
+    subprocess.Popen = popen
+    try:
+        host, port = base[len("http://"):].split(":")
+        conn = http.client.HTTPConnection(host, int(port), timeout=30)
+        conn.request("GET", "/live/llllllllll1.mp3")
+        resp = conn.getresponse()
+        assert resp.status == 200 and resp.getheader("Content-Type") == "audio/mpeg"
+        assert resp.getheader("Content-Length") is None
+        assert len(resp.read(20_000)) == 20_000
+        resp.close()  # the speaker goes away
+        conn.close()
+        deadline = time.time() + 15
+        while started[-1].poll() is None and time.time() < deadline:
+            time.sleep(0.1)
+        assert started[-1].poll() is not None, "ffmpeg kept running after the listener left"
+    finally:
+        subprocess.Popen = real
+    assert not list(app.transcoder.cache_dir.glob("llllllllll1*"))  # nothing cached
+
+    app.remember([Track("llllllllll1", "Live", live=True)])
+    assert call(base + "/api/play", {"speaker": "Küche", "ids": ["llllllllll1"]})[0] == 200
+    assert sonos.enqueued[-1][1][0][1].endswith("/live/llllllllll1.mp3")

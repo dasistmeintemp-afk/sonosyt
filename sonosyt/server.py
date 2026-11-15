@@ -7,6 +7,7 @@ import logging
 import re
 import shutil
 import threading
+import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
@@ -14,13 +15,15 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from . import __version__, youtube
+from .library import Library
 from .sonos import SonosController, SonosError, local_ip_for
 from .transcode import Transcoder
 from .youtube import Track, YouTubeError
 
 log = logging.getLogger(__name__)
 
-STREAM_RE = re.compile(r"^/stream/([A-Za-z0-9_-]{11})\.mp3$")
+STREAM_RE = re.compile(r"^/(stream|live)/([A-Za-z0-9_-]{11})\.mp3$")
+AUTOPLAY_INTERVAL = 8.0
 MAX_BODY = 64 * 1024
 
 
@@ -35,15 +38,23 @@ class App:
         public_url: str | None = None,
         lookup=youtube.lookup,
         prefetch_wait: float = 8.0,
+        library: Library | None = None,
+        related=youtube.related,
     ):
         self.transcoder = transcoder
         self.sonos = sonos
         self.port = port
         self.public_url = public_url.rstrip("/") if public_url else None
         self.lookup = lookup
+        self.related = related
         self.prefetch_wait = prefetch_wait
+        self.library = library or Library(transcoder.cache_dir / "library.json")
         self._tracks: dict[str, Track] = {}
         self._lock = threading.Lock()
+        self._extended: dict[str, str] = {}  # speaker -> video autoplay last handled
+        self.remember(self.library.tracks())
+
+    # -- tracks --------------------------------------------------------------
 
     def remember(self, tracks: list[Track]) -> None:
         with self._lock:
@@ -67,9 +78,11 @@ class App:
             raise YouTubeError(f"Video nicht gefunden: {video_id}")
         return tracks[0]
 
-    def stream_url(self, video_id: str, speaker_ip: str) -> str:
+    def stream_url(self, track: Track, speaker_ip: str) -> str:
         base = self.public_url or f"http://{local_ip_for(speaker_ip)}:{self.port}"
-        return f"{base}/stream/{video_id}.mp3"
+        return f"{base}/{'live' if track.live else 'stream'}/{track.id}.mp3"
+
+    # -- playing -------------------------------------------------------------
 
     def play(self, speaker: str, ids: list[str] | None, query: str | None, play_now: bool) -> dict:
         if ids:
@@ -82,13 +95,63 @@ class App:
         if not tracks:
             raise YouTubeError("Nichts gefunden.")
         device = self.sonos.get(speaker)
-        if play_now:
+        if play_now and not tracks[0].live:
             # Short videos finish converting within seconds; then Sonos gets a
             # complete file (with duration and seeking) instead of a live stream.
             self.transcoder.ensure(tracks[0].id).done.wait(self.prefetch_wait)
-        items = [(t, self.stream_url(t.id, device.ip_address)) for t in tracks]
+        items = [(t, self.stream_url(t, device.ip_address)) for t in tracks]
         position = self.sonos.enqueue(speaker, items, play_now)
+        self.library.played(tracks)
         return {"queued": [t.to_dict() for t in tracks], "position": position}
+
+    def status(self, speaker: str) -> dict:
+        status = self.sonos.status(speaker)
+        status["autoplay"] = self.library.autoplay(speaker)
+        return status
+
+    # -- autoplay ------------------------------------------------------------
+
+    def autoplay_once(self, speaker: str) -> Track | None:
+        """If the last queued track is playing, queue what YouTube would play next."""
+        status = self.sonos.status(speaker)
+        video_id = status.get("video_id")
+        if (
+            status.get("state") != "PLAYING"
+            or not video_id
+            or status.get("live")
+            or status.get("repeat")
+            or status.get("queue_position") != status.get("queue_length")
+            or self._extended.get(speaker) == video_id  # one attempt per track
+        ):
+            return None
+        self._extended[speaker] = video_id
+        recent = self.library.recent_ids() | {video_id}
+        candidates = [t for t in self.related(video_id) if not t.live]
+        fresh = [t for t in candidates if t.id not in recent]
+        choice = (fresh or candidates or [None])[0]
+        if choice is None:
+            return None
+        self.remember([choice])
+        device = self.sonos.get(speaker)
+        self.transcoder.ensure(choice.id)  # convert ahead, so it starts seamlessly
+        self.sonos.enqueue(speaker, [(choice, self.stream_url(choice, device.ip_address))], False)
+        self.library.played([choice])
+        log.info("autoplay in %s: %s", speaker, choice.title)
+        return choice
+
+    def start_autoplay(self) -> threading.Thread:
+        def loop() -> None:
+            while True:
+                for speaker in self.library.autoplay_speakers():
+                    try:
+                        self.autoplay_once(speaker)
+                    except Exception as exc:  # noqa: BLE001 - keep the loop alive
+                        log.warning("autoplay for %s failed: %s", speaker, exc)
+                time.sleep(AUTOPLAY_INTERVAL)
+
+        thread = threading.Thread(target=loop, name="autoplay", daemon=True)
+        thread.start()
+        return thread
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -148,7 +211,7 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(url.query)
         m = STREAM_RE.match(url.path)
         if m:
-            return self._stream(m.group(1))
+            return self._live(m.group(2)) if m.group(1) == "live" else self._stream(m.group(2))
         if url.path in ("/", "/index.html"):
             return self._index()
         if url.path == "/api/ping":  # lets the Android app recognise the server
@@ -164,7 +227,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._guard(lambda: self.app.sonos.queue(speaker))
         if url.path == "/api/status":
             speaker = query.get("speaker", [""])[0]
-            return self._guard(lambda: self.app.sonos.status(speaker))
+            return self._guard(lambda: self.app.status(speaker))
+        if url.path == "/api/rooms":
+            speaker = query.get("speaker", [""])[0]
+            return self._guard(lambda: self.app.sonos.rooms(speaker))
+        if url.path == "/api/library":
+            return self._guard(self.app.library.snapshot)
         self._error(404, "not found")
 
     def do_POST(self):
@@ -192,7 +260,9 @@ class Handler(BaseHTTPRequestHandler):
                 body = self._body()
                 speaker = str(body["speaker"])
                 if "volume" in body:
-                    self.app.sonos.set_volume(speaker, int(body["volume"]))
+                    self.app.sonos.set_volume(
+                        speaker, int(body["volume"]), bool(body.get("single"))
+                    )
                 if body.get("action"):
                     value = body.get("value")
                     self.app.sonos.control(
@@ -200,6 +270,28 @@ class Handler(BaseHTTPRequestHandler):
                     )
                 return {"ok": True}
             return self._guard(control)
+        if path == "/api/favorite":
+            def favorite():
+                body = self._body()
+                track = self.app.track(youtube.watch_id(str(body["id"])))
+                self.app.library.set_favorite(track, bool(body.get("favorite", True)))
+                return self.app.library.snapshot()
+            return self._guard(favorite)
+        if path == "/api/autoplay":
+            def autoplay():
+                body = self._body()
+                speaker = str(body["speaker"])
+                self.app.sonos.get(speaker)  # must exist
+                self.app.library.set_autoplay(speaker, bool(body.get("on")))
+                return {"autoplay": self.app.library.autoplay(speaker)}
+            return self._guard(autoplay)
+        if path == "/api/group":
+            def group():
+                body = self._body()
+                speaker = str(body["speaker"])
+                self.app.sonos.group(speaker, str(body["room"]), bool(body.get("join")))
+                return self.app.sonos.rooms(speaker)
+            return self._guard(group)
         self._error(404, "not found")
 
     # -- web UI ------------------------------------------------------------
@@ -244,6 +336,36 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(chunk)
         except (BrokenPipeError, ConnectionResetError):
             pass  # speaker skipped the track or re-requested it
+
+    def _live(self, video_id: str) -> None:
+        """A running livestream: endless MP3, converted while it is listened to."""
+        if self.command == "HEAD":
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/mpeg")
+            self.end_headers()
+            return
+        try:
+            chunks = self.app.transcoder.live(video_id)
+            first = next(chunks, None)
+        except Exception as exc:  # noqa: BLE001 - e.g. the stream has ended
+            log.error("livestream %s failed: %s", video_id, exc)
+            return self._error(502, str(exc))
+        if first is None:
+            return self._error(502, "Der Livestream liefert keinen Ton.")
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/mpeg")
+            self.send_header("Accept-Ranges", "none")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.close_connection = True
+            self.wfile.write(first)
+            for chunk in chunks:
+                self.wfile.write(chunk)
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # speaker stopped listening
+        finally:
+            chunks.close()  # stops ffmpeg
 
     def _send_file(self, path: Path) -> None:
         size = path.stat().st_size
