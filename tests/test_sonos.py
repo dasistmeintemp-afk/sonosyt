@@ -111,8 +111,15 @@ def test_fixed_ip_expands_to_all_rooms(monkeypatch):
 
     kitchen, living = FakeSpeaker("Küche", "10.0.0.5"), FakeSpeaker("Wohnzimmer", "10.0.0.6")
     kitchen.visible_zones = {kitchen, living}
-    dead = FakeSpeaker("?", "10.0.0.9")
-    type(dead).visible_zones = property(lambda self: (_ for _ in ()).throw(OSError("unreachable")))
+
+    class Unreachable(FakeSpeaker):
+        @property
+        def visible_zones(self):
+            raise OSError("unreachable")
+
+    dead = Unreachable("Bad", "10.0.0.9")
     monkeypatch.setattr(soco, "SoCo", lambda ip: {"10.0.0.5": kitchen, "10.0.0.9": dead}[ip])
-    ctl = SonosController(ips=["10.0.0.5"])
-    assert [s["name"] for s in ctl.speakers()] == ["Küche", "Wohnzimmer"]
+    assert [s["name"] for s in SonosController(ips=["10.0.0.5"]).speakers()] == ["Küche", "Wohnzimmer"]
+    # A speaker that cannot report the system is still listed as given.
+    names = [s["name"] for s in SonosController(ips=["10.0.0.9", "10.0.0.5"]).speakers()]
+    assert names == ["Bad", "Küche", "Wohnzimmer"]
