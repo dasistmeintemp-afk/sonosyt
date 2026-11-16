@@ -19,13 +19,13 @@ dependencies = [
 dev = ["pytest>=8"]
 
 [project.scripts]
-sonosyt = "sonosyt.cli:main"
+sonosyt = "sonosyt.adapters.cli:main"
 
-[tool.setuptools]
-packages = ["sonosyt"]
+[tool.setuptools.packages.find]
+include = ["sonosyt*"]
 
 [tool.setuptools.package-data]
-sonosyt = ["web/*"]
+"sonosyt.adapters.http" = ["web/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

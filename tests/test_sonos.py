@@ -1,7 +1,8 @@
 import pytest
 
-from sonosyt.sonos import SonosController, SonosError, build_didl
-from sonosyt.youtube import Track
+from sonosyt.adapters.sonos import SonosController, build_didl
+from sonosyt.domain.errors import SpeakerError
+from sonosyt.domain.track import Track
 
 
 class FakeGroup:
@@ -109,7 +110,7 @@ def test_get_by_name_or_ip(setup):
     ctl, kitchen, living = setup
     assert ctl.get("küche") is kitchen
     assert ctl.get("10.0.0.6") is living
-    with pytest.raises(SonosError):
+    with pytest.raises(SpeakerError):
         ctl.get("Bad")
 
 
@@ -150,7 +151,7 @@ def test_queue_only_appends_without_touching_playback(setup):
     kitchen.position = "1"
     assert ctl.enqueue("Küche", ITEMS, "queue") == 3
     assert titles(kitchen) == ["a", "b", "One", "Two"] and kitchen.calls == []
-    with pytest.raises(SonosError):
+    with pytest.raises(SpeakerError):
         ctl.enqueue("Küche", [], "now")
 
 
@@ -167,7 +168,7 @@ def test_control_seek_queue_and_status(setup):
         "album_art": "https://i.ytimg.com/vi/bbbbbbbbbbb/hqdefault.jpg",
         "video_id": "bbbbbbbbbbb", "live": False,
     }]
-    with pytest.raises(SonosError):
+    with pytest.raises(SpeakerError):
         ctl.control("Küche", "explode")
     kitchen.position = "2"
     status = ctl.status("Wohnzimmer")
@@ -229,7 +230,7 @@ def test_shuffle_repeat_and_sleep_timer(setup):
     assert kitchen.shuffle is True and kitchen.repeat == "ONE"
     ctl.control("Küche", "repeat", 0)
     assert kitchen.repeat is False
-    with pytest.raises(SonosError):
+    with pytest.raises(SpeakerError):
         ctl.control("Küche", "repeat", 7)
     ctl.control("Küche", "sleep", 30)
     assert kitchen.sleep == 1800 and ctl.status("Küche")["sleep"] == 1800
@@ -259,7 +260,7 @@ def test_rooms_grouping_and_single_room_volume(setup, monkeypatch):
     assert bath.joined is kitchen  # joins the coordinator of the selected room's group
     ctl.group("Wohnzimmer", "Küche", False)
     assert kitchen.joined is None
-    with pytest.raises(SonosError):
+    with pytest.raises(SpeakerError):
         ctl.group("Küche", "Küche", False)
     ctl.set_volume("Wohnzimmer", 40, single=True)
     assert living.volume == 40 and kitchen.group.volume == 33
@@ -286,9 +287,9 @@ def test_play_next_inserts_without_interrupting_and_queue_can_be_reordered(setup
     assert titles(kitchen) == ["c", "a", "One", "b"]
     ctl.control("Küche", "move", 0, 2)
     assert titles(kitchen) == ["a", "One", "c", "b"]
-    with pytest.raises(SonosError):
+    with pytest.raises(SpeakerError):
         ctl.control("Küche", "move", 0, 9)
-    with pytest.raises(SonosError):
+    with pytest.raises(SpeakerError):
         ctl.enqueue("Küche", ITEMS, "sideways")
 
 
@@ -347,7 +348,7 @@ def test_grouping_falls_back_to_the_websocket_api_when_upnp_is_refused(setup, mo
     assert attempts == []  # remembered: the refused UPnP attempt is skipped from now on
 
     answer["success"] = False  # both ways refused: a readable error, not a crash
-    with pytest.raises(SonosError, match="Bad lässt sich gerade nicht hinzufügen"):
+    with pytest.raises(SpeakerError, match="Bad lässt sich gerade nicht hinzufügen"):
         ctl.group("Wohnzimmer", "Bad", True)
 
 
@@ -401,9 +402,9 @@ def test_sonos_favourites_play_radio_directly_and_playlists_via_queue(setup):
     kitchen.queue = ["a"]
     assert ctl.play_favorite("Küche", 1) == "Party-Mix"
     assert kitchen.queue[-1] is favs[1]._ref and kitchen.calls[-1] == ("play_from_queue", 1)
-    with pytest.raises(SonosError, match="Kaputt"):
+    with pytest.raises(SpeakerError, match="Kaputt"):
         ctl.play_favorite("Küche", 2)
-    with pytest.raises(SonosError):
+    with pytest.raises(SpeakerError):
         ctl.play_favorite("Küche", 9)
 
 

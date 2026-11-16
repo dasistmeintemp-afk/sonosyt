@@ -1,6 +1,6 @@
 import subprocess
 
-from sonosyt import updater
+from sonosyt.adapters import updater
 
 
 def test_update_reports_new_version(monkeypatch):

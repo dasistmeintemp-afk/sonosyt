@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from sonosyt.transcode import Transcoder
+from sonosyt.adapters.transcoder import Transcoder
 
 VID = "abcdefghijk"
 

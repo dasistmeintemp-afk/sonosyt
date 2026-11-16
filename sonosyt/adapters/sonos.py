@@ -1,28 +1,16 @@
-"""Sonos discovery and playback control via SoCo."""
+"""Sonos discovery and playback control via SoCo. Implements the SpeakerSystem port."""
 
 from __future__ import annotations
 
 import logging
 import re
-import socket
 import threading
 import time
 
-from .youtube import Track
-
+from ..domain.errors import SpeakerError
+from ..domain.track import Track
 
 log = logging.getLogger(__name__)
-
-
-class SonosError(Exception):
-    pass
-
-
-def local_ip_for(peer_ip: str) -> str:
-    """The local address this machine uses to talk to ``peer_ip``."""
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.connect((peer_ip, 1400))  # UDP: nothing is sent
-        return s.getsockname()[0]
 
 
 def _hms(seconds: int | None) -> str | None:
@@ -74,7 +62,7 @@ def _group_via_websocket(coordinator_ip: str, coordinator_uid: str, member_uid: 
             await ws.connect()
             header, data = await ws.get_groups()
             if not header.get("success"):
-                raise SonosError(f"Gruppen konnten nicht gelesen werden: {data}")
+                raise SpeakerError(f"Gruppen konnten nicht gelesen werden: {data}")
             groups = data.get("groups") or []
             if join:
                 group = next(
@@ -85,7 +73,7 @@ def _group_via_websocket(coordinator_ip: str, coordinator_uid: str, member_uid: 
                 group = next((g for g in groups if member_uid in (g.get("playerIds") or [])), None)
                 change = {"playerIdsToRemove": [member_uid]}
             if not group:
-                raise SonosError("Die Gruppe wurde nicht gefunden.")
+                raise SpeakerError("Die Gruppe wurde nicht gefunden.")
             header, data = await ws.send_command(
                 {
                     "namespace": "groups:1",
@@ -96,7 +84,7 @@ def _group_via_websocket(coordinator_ip: str, coordinator_uid: str, member_uid: 
                 change,
             )
             if not header.get("success"):
-                raise SonosError(f"Sonos hat die Änderung abgelehnt: {data}")
+                raise SpeakerError(f"Sonos hat die Änderung abgelehnt: {data}")
         finally:
             await ws.close()
 
@@ -167,7 +155,10 @@ class SonosController:
             for dev in self.devices(refresh):
                 if wanted in (dev.player_name.lower(), dev.ip_address):
                     return dev
-        raise SonosError(f"Sonos-Lautsprecher nicht gefunden: {name_or_ip!r}")
+        raise SpeakerError(f"Sonos-Lautsprecher nicht gefunden: {name_or_ip!r}")
+
+    def address(self, speaker: str) -> str:
+        return self.get(speaker).ip_address
 
     @staticmethod
     def _coordinator(dev):
@@ -200,9 +191,9 @@ class SonosController:
         Returns the 1-based queue position of the first added track.
         """
         if mode not in ("now", "next", "queue"):
-            raise SonosError(f"Unbekannter Modus: {mode!r}")
+            raise SpeakerError(f"Unbekannter Modus: {mode!r}")
         if not items:
-            raise SonosError("Keine Titel zum Abspielen.")
+            raise SpeakerError("Keine Titel zum Abspielen.")
         coord = self._coordinator(self.get(speaker))
         insert_at = 0  # 0 = append
         if mode in ("now", "next"):
@@ -254,7 +245,7 @@ class SonosController:
             try:
                 coord.move_in_queue(int(value), int(to))
             except ValueError as exc:
-                raise SonosError("Diese Position gibt es in der Warteschlange nicht.") from exc
+                raise SpeakerError("Diese Position gibt es in der Warteschlange nicht.") from exc
         elif action == "crossfade":
             coord.cross_fade = bool(value)
         elif action == "mute":
@@ -267,16 +258,16 @@ class SonosController:
                 else:
                     coord.repeat = {0: False, 1: True, 2: "ONE"}[int(value or 0)]
             except KeyError:
-                raise SonosError("Ungültiger Wert für Wiederholen.")
+                raise SpeakerError("Ungültiger Wert für Wiederholen.")
             except Exception as exc:  # noqa: BLE001
-                raise SonosError(
+                raise SpeakerError(
                     "Zufall/Wiederholen geht nur, während die Warteschlange läuft."
                 ) from exc
         elif action == "sleep":  # minutes; 0 switches the timer off
             minutes = max(0, int(value or 0))
             coord.set_sleep_timer(minutes * 60 if minutes else None)
         else:
-            raise SonosError(f"Unbekannte Aktion: {action!r}")
+            raise SpeakerError(f"Unbekannte Aktion: {action!r}")
 
     def set_volume(self, speaker: str, volume: int, single: bool = False) -> None:
         """Set the volume of a room's whole group, or with ``single`` just the room."""
@@ -319,7 +310,7 @@ class SonosController:
         dev = self.get(speaker)
         other = self.get(room)
         if other.ip_address == dev.ip_address:
-            raise SonosError("Der gewählte Raum gehört immer dazu.")
+            raise SpeakerError("Der gewählte Raum gehört immer dazu.")
         coordinator = self._coordinator(dev)
         upnp_error: Exception | None = None
         if other.uid not in self._upnp_refused:
@@ -340,7 +331,7 @@ class SonosController:
             self._upnp_refused.add(other.uid)  # next time, skip the failing attempt
         except Exception as exc:  # noqa: BLE001
             log.warning("grouping %s with %s over websocket failed: %s", room, speaker, exc)
-            raise SonosError(
+            raise SpeakerError(
                 f"{room} lässt sich gerade nicht {'hinzufügen' if join else 'herausnehmen'}"
                 f" – der Lautsprecher hat abgelehnt ({upnp_error or exc})."
             ) from exc
@@ -405,12 +396,12 @@ class SonosController:
         """Play a Sonos favourite. Returns its title."""
         coord, favs = self._favorites(speaker)
         if not 0 <= index < len(favs):
-            raise SonosError("Diesen Sonos-Favoriten gibt es nicht mehr.")
+            raise SpeakerError("Diesen Sonos-Favoriten gibt es nicht mehr.")
         fav = favs[index]
         try:
             ref = fav.reference
         except Exception as exc:  # noqa: BLE001
-            raise SonosError(f"„{fav.title}“ lässt sich hier nicht abspielen.") from exc
+            raise SpeakerError(f"„{fav.title}“ lässt sich hier nicht abspielen.") from exc
         item_class = getattr(ref, "item_class", "") or ""
         if item_class.startswith("object.container"):
             # A playlist or album: it goes into the queue, after what is playing.

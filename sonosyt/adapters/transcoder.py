@@ -1,4 +1,4 @@
-"""Fetch a video's audio with yt-dlp and transcode it to MP3 with ffmpeg.
+"""Fetch a video's audio with yt-dlp and transcode it to MP3 with ffmpeg (AudioConverter port).
 
 Sonos cannot play YouTube's (DASH / Opus) streams directly, so every video is
 converted to a plain MP3 file in a local cache.  A file that is still being
@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 from typing import Callable, Iterator
 
-from .youtube import VIDEO_ID_RE, watch_url
+from ..domain.track import VIDEO_ID_RE, watch_url
 
 log = logging.getLogger(__name__)
 

@@ -61,3 +61,10 @@ def start_auto_update(interval: float = INTERVAL) -> threading.Thread:
     thread.stop = stop  # type: ignore[attr-defined]
     thread.start()
     return thread
+
+
+class YtDlpTools:
+    """The Tools port."""
+
+    def ytdlp_version(self) -> str:
+        return ytdlp_version()

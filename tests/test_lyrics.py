@@ -1,5 +1,12 @@
-from sonosyt.lyrics import Lyrics, best_match, parse_synced, split_title
-from sonosyt.youtube import Track
+from types import SimpleNamespace
+
+from sonosyt.application.lyrics import LyricsService
+from sonosyt.domain.lyrics import best_match, parse_synced, split_title
+from sonosyt.domain.track import Track
+
+
+def Lyrics(search):
+    return LyricsService(SimpleNamespace(search=search))
 
 
 def test_split_title():

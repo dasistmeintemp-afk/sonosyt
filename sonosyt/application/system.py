@@ -1,0 +1,76 @@
+"""Audio for the speakers, covers, and the facts and checks of the settings screen."""
+
+from __future__ import annotations
+
+import threading
+import time
+
+from ..domain.track import Track, watch_id
+from .playback import PlaybackService
+from .ports import AudioConverter, Network, SpeakerSystem, Thumbnails, Tools
+
+
+class StreamingService:
+    """What the speakers fetch. Also notes who fetched, for the connection check."""
+
+    def __init__(self, converter: AudioConverter, thumbnails: Thumbnails):
+        self.converter = converter
+        self.thumbnails = thumbnails
+        self._fetches: dict[str, float] = {}  # client address -> last audio request
+        self._lock = threading.Lock()
+
+    def note_fetch(self, client: str) -> None:
+        with self._lock:
+            self._fetches[client] = time.time()
+
+    def last_fetch(self, client: str) -> float | None:
+        """When ``client`` last fetched audio; else when anyone did (a stereo pair or
+        group may fetch through another member)."""
+        with self._lock:
+            return self._fetches.get(client) or max(self._fetches.values(), default=None)
+
+    def cached(self, video_id: str):
+        return self.converter.cached(watch_id(video_id))
+
+    def job(self, video_id: str):
+        return self.converter.ensure(watch_id(video_id))
+
+    def live(self, video_id: str):
+        return self.converter.live(watch_id(video_id))
+
+    def cover(self, video_id: str) -> bytes:
+        return self.thumbnails.get(watch_id(video_id))
+
+
+class SystemService:
+    def __init__(self, version: str, speakers: SpeakerSystem, converter: AudioConverter, network: Network,
+                 tools: Tools, playback: PlaybackService, streaming: StreamingService):
+        self.version = version
+        self.speakers = speakers
+        self.converter = converter
+        self.network = network
+        self.tools = tools
+        self.playback = playback
+        self.streaming = streaming
+        self._ytdlp: tuple[float, str] | None = None
+
+    def info(self) -> dict:
+        now = time.monotonic()
+        if not self._ytdlp or now - self._ytdlp[0] > 600:  # asking yt-dlp takes a moment
+            self._ytdlp = (now, self.tools.ytdlp_version())
+        return {"version": self.version, "ytdlp": self._ytdlp[1], "cache": self.converter.cache_info()}
+
+    def clear_cache(self) -> dict:
+        removed = self.converter.clear_cache()
+        return {"removed": removed, **self.info()}
+
+    def diagnose(self, speaker: str) -> dict:
+        """Who can reach whom: server -> YouTube, server -> speaker, speaker -> server."""
+        address = self.speakers.address(speaker)
+        fetched = self.streaming.last_fetch(address)
+        return {
+            "youtube": self.network.youtube_reachable(),
+            "speaker": self.speakers.reachable(speaker),
+            "fetched_ago": None if fetched is None else int(time.time() - fetched),
+            "stream_base": self.playback.base_url(address),
+        }

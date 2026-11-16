@@ -189,6 +189,31 @@ zwischen den VLANs erlauben:
   Installiere deshalb nur APKs aus diesem Repository.
 - Bitte die Nutzungsbedingungen von YouTube und das Urheberrecht beachten.
 
+## Architektur
+
+Der Server ist hexagonal aufgebaut (Ports & Adapters). Die Fachlogik kennt weder Sonos noch
+YouTube, ffmpeg, Dateien oder HTTP; sie spricht nur über Schnittstellen („Ports") nach außen.
+
+```
+sonosyt/
+  domain/          Fachregeln ohne Ein-/Ausgabe: Track, Wecker, Abspiel-Regeln, Songtext-Auswahl
+  application/     Anwendungsfälle (Abspielen, Räume, Bibliothek, Wecker, Autoplay …)
+    ports.py       Schnittstellen nach außen: Lautsprecher, Video-Katalog, Umwandlung, Bibliothek …
+  adapters/        Technik an den Rändern
+    sonos.py         SoCo                    → SpeakerSystem
+    youtube.py       yt-dlp                  → VideoCatalog
+    transcoder.py    yt-dlp + ffmpeg         → AudioConverter
+    json_library.py  JSON-Datei              → LibraryRepository
+    lrclib.py, thumbnails.py, network.py, updater.py
+    http/            Web-Server und Oberfläche (eingehend)
+    cli.py           Kommandozeile (eingehend)
+  bootstrap.py     Composition Root: verbindet Ports mit Adaptern
+```
+
+`tests/test_architecture.py` prüft bei jedem Testlauf, dass Domain und Anwendung keine Adapter
+oder Fremdbibliotheken importieren. Für Tests werden die Adapter über `bootstrap.build(...)`
+durch Fakes ersetzt.
+
 ## Entwicklung
 
 ```sh

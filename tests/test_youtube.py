@@ -1,7 +1,9 @@
 import pytest
 
-from sonosyt import youtube
-from sonosyt.youtube import Track, YouTubeError, lookup
+from sonosyt.adapters import youtube
+from sonosyt.adapters.youtube import lookup
+from sonosyt.domain.errors import MediaError
+from sonosyt.domain.track import Track
 
 
 @pytest.fixture
@@ -44,7 +46,7 @@ def test_single_video_url_and_bare_id(extract):
 def test_rejects_non_youtube_urls(extract):
     calls, _ = extract
     for url in ("https://example.com/video", "http://youtube.com.evil.test/watch?v=x"):
-        with pytest.raises(YouTubeError):
+        with pytest.raises(MediaError):
             lookup(url)
     assert calls == []
 
@@ -90,5 +92,5 @@ def test_extract_reads_json_from_the_ytdlp_subprocess(monkeypatch):
         return subprocess.CompletedProcess(cmd, 1, "", "WARNING: x\nERROR: Video unavailable\n")
 
     monkeypatch.setattr(youtube.subprocess, "run", fail)
-    with pytest.raises(YouTubeError, match="Video unavailable"):
+    with pytest.raises(MediaError, match="Video unavailable"):
         lookup("aaaaaaaaaaa")

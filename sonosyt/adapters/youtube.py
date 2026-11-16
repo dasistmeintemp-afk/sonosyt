@@ -1,4 +1,7 @@
-"""YouTube metadata lookup (search, single videos, playlists) via yt-dlp."""
+"""YouTube via yt-dlp: search, single videos, playlists, related videos, covers.
+
+Implements the VideoCatalog port.
+"""
 
 from __future__ import annotations
 
@@ -8,51 +11,9 @@ import subprocess
 import sys
 import urllib.parse
 import urllib.request
-from dataclasses import asdict, dataclass
 
-VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
-
-
-class YouTubeError(Exception):
-    """YouTube could not be queried or returned nothing usable."""
-
-
-@dataclass(frozen=True)
-class Track:
-    id: str
-    title: str
-    uploader: str = ""
-    duration: int | None = None  # seconds
-    live: bool = False  # a running livestream: endless, cannot be cached
-
-    @property
-    def thumbnail(self) -> str:
-        return f"https://i.ytimg.com/vi/{self.id}/hqdefault.jpg"
-
-    def to_dict(self) -> dict:
-        return {**asdict(self), "thumbnail": self.thumbnail}
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "Track":
-        duration = data.get("duration")
-        return cls(
-            id=watch_id(str(data["id"])),
-            title=str(data.get("title") or data["id"]),
-            uploader=str(data.get("uploader") or ""),
-            duration=int(duration) if duration else None,
-            live=bool(data.get("live")),
-        )
-
-
-def watch_id(video_id: str) -> str:
-    if not VIDEO_ID_RE.match(video_id):
-        raise ValueError(f"invalid YouTube video id: {video_id!r}")
-    return video_id
-
-
-def watch_url(video_id: str) -> str:
-    return f"https://www.youtube.com/watch?v={watch_id(video_id)}"
-
+from ..domain.errors import MediaError
+from ..domain.track import VIDEO_ID_RE, Track, watch_id, watch_url
 
 def _track_from_info(info: dict) -> Track | None:
     video_id = info.get("id") or ""
@@ -85,14 +46,14 @@ def _extract(target: str, playlist: bool = False) -> dict:
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
     except subprocess.TimeoutExpired as exc:
-        raise YouTubeError("YouTube antwortet nicht (Zeitüberschreitung).") from exc
+        raise MediaError("YouTube antwortet nicht (Zeitüberschreitung).") from exc
     if proc.returncode != 0:
         message = (proc.stderr or "").strip().splitlines()
-        raise YouTubeError(message[-1] if message else "yt-dlp ist fehlgeschlagen.")
+        raise MediaError(message[-1] if message else "yt-dlp ist fehlgeschlagen.")
     try:
         return json.loads(proc.stdout) or {}
     except ValueError as exc:
-        raise YouTubeError("Unerwartete Antwort von yt-dlp.") from exc
+        raise MediaError("Unerwartete Antwort von yt-dlp.") from exc
 
 
 def _tracks(info: dict) -> list[Track]:
@@ -114,7 +75,7 @@ def lookup(query: str, limit: int = 10) -> list[Track]:
             query,
             re.I,
         ):
-            raise YouTubeError("Nur YouTube-URLs werden unterstützt.")
+            raise MediaError("Nur YouTube-URLs werden unterstützt.")
         target = query
     else:
         target = f"ytsearch{int(limit)}:{query}"
@@ -141,3 +102,33 @@ def suggest(query: str, limit: int = 8) -> list[str]:
         return [str(item) for item in data[1] if isinstance(item, str)][:limit]
     except Exception:  # noqa: BLE001 - suggestions are a convenience only
         return []
+
+
+def thumbnail(video_id: str) -> bytes:
+    """The small YouTube cover of a video (320x180 JPEG)."""
+    url = f"https://i.ytimg.com/vi/{watch_id(video_id)}/mqdefault.jpg"
+    try:
+        with urllib.request.urlopen(url, timeout=6) as resp:
+            data = resp.read(512 * 1024)
+    except OSError as exc:
+        raise MediaError(f"Kein Cover für {video_id}") from exc
+    if not data.startswith(b"\xff\xd8"):
+        raise MediaError(f"Kein Cover für {video_id}")
+    return data
+
+
+class YtDlpCatalog:
+    """The VideoCatalog port. Looks the functions up at call time, so they can be
+    replaced in tests."""
+
+    def lookup(self, query: str, limit: int = 10) -> list[Track]:
+        return lookup(query, limit)
+
+    def related(self, video_id: str) -> list[Track]:
+        return related(video_id)
+
+    def suggest(self, query: str) -> list[str]:
+        return suggest(query)
+
+    def thumbnail(self, video_id: str) -> bytes:
+        return thumbnail(video_id)

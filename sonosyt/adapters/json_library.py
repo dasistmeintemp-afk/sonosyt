@@ -1,15 +1,17 @@
-"""Favourites, play history and per-room settings, kept in one JSON file."""
+"""Favourites, history, playlists, alarms and per-room settings in one JSON file.
+
+Implements the LibraryRepository port.
+"""
 
 from __future__ import annotations
 
 import json
 import os
-import re
 import threading
-import uuid
 from pathlib import Path
 
-from .youtube import Track
+from ..domain.alarm import normalize_alarm
+from ..domain.track import Track
 
 HISTORY_LIMIT = 50
 
@@ -239,52 +241,3 @@ class Library:
             (self._autoplay.add if on else self._autoplay.discard)(speaker)
             self._save()
 
-
-def normalize_alarm(data: dict) -> dict:
-    """A checked, complete alarm. Raises ValueError for anything unusable."""
-    from zoneinfo import ZoneInfo
-
-    if not isinstance(data, dict):
-        raise ValueError("Wecker fehlt.")
-    time_text = str(data.get("time") or "")
-    if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", time_text):
-        raise ValueError("Uhrzeit im Format HH:MM angeben.")
-    days = sorted({int(d) for d in data.get("days") or []})
-    if any(d < 0 or d > 6 for d in days):
-        raise ValueError("Wochentage 0 (Montag) bis 6 (Sonntag).")
-    speaker = str(data.get("speaker") or "").strip()
-    if not speaker:
-        raise ValueError("Raum fehlt.")
-    source = data.get("source") or {}
-    kind = source.get("type")
-    if kind == "playlist":
-        clean_source = {"type": kind, "name": str(source.get("name") or "")[:60]}
-        if not clean_source["name"]:
-            raise ValueError("Playlist fehlt.")
-    elif kind == "favorites":
-        clean_source = {"type": kind}
-    elif kind == "sonosfav":
-        clean_source = {"type": kind, "index": int(source.get("index")),
-                        "title": str(source.get("title") or "")[:120]}
-    else:
-        raise ValueError("Was soll der Wecker spielen?")
-    zone = str(data.get("tz") or "UTC")
-    try:
-        ZoneInfo(zone)
-    except Exception as exc:  # noqa: BLE001
-        raise ValueError(f"Unbekannte Zeitzone: {zone}") from exc
-    alarm_id = str(data.get("id") or uuid.uuid4().hex[:12])
-    if not re.fullmatch(r"[A-Za-z0-9]{1,32}", alarm_id):
-        raise ValueError("Ungültige Wecker-ID.")
-    return {
-        "id": alarm_id,
-        "time": time_text,
-        "days": days,  # empty: once, at the next occurrence
-        "speaker": speaker[:100],
-        "source": clean_source,
-        "volume": max(1, min(100, int(data.get("volume", 20)))),
-        "fade": bool(data.get("fade", True)),
-        "shuffle": bool(data.get("shuffle", False)),
-        "enabled": bool(data.get("enabled", True)),
-        "tz": zone,
-    }

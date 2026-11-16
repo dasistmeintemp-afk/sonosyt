@@ -1,4 +1,4 @@
-"""Command line interface: ``sonosyt serve | speakers | play | control``."""
+"""Command line (inbound adapter): ``sonosyt serve | speakers | play | control``."""
 
 from __future__ import annotations
 
@@ -43,28 +43,26 @@ def _call(server: str, path: str, payload: dict | None = None):
 
 
 def cmd_serve(args) -> int:
-    from .server import App, check_ffmpeg, make_server
-    from .sonos import SonosController
-    from .transcode import Transcoder
+    from ..bootstrap import build, check_ffmpeg
+    from .http.server import make_server
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     check_ffmpeg()
-    app = App(
-        transcoder=Transcoder(
-            args.cache_dir, bitrate=args.bitrate, max_cache_bytes=args.cache_size_mb * 1024**2
-        ),
-        sonos=SonosController(ips=args.speaker_ip),
+    app = build(
+        args.cache_dir,
         port=args.port,
         public_url=args.public_url,
-        allowed_hosts=args.allow_host,
+        speaker_ips=args.speaker_ip,
+        bitrate=args.bitrate,
+        cache_size_mb=args.cache_size_mb,
     )
-    app.start_autoplay()
+    server = make_server(app, args.host, args.port, args.allow_host, args.public_url)
+    app.monitor.start()
     if args.auto_update:
         from .updater import start_auto_update
 
         start_auto_update()
-    server = make_server(app, args.host)
-    print(f"sonosyt läuft: http://localhost:{app.port}/  (Strg+C zum Beenden)")
+    print(f"sonosyt läuft: http://localhost:{app.playback.port}/  (Strg+C zum Beenden)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
