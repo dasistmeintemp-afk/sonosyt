@@ -362,3 +362,53 @@ def test_mute_and_tone_controls(setup):
         "bass": 10, "treble": -3, "loudness": False}
     assert (living.bass, living.treble, living.loudness) == (10, -3, False) and kitchen.bass == 0
     assert ctl.set_eq("Küche") == {"bass": 0, "treble": 0, "loudness": True}  # nothing given: unchanged
+
+
+def test_sonos_favourites_play_radio_directly_and_playlists_via_queue(setup):
+    ctl, kitchen, living = setup
+
+    class Ref:
+        def __init__(self, item_class, uri):
+            self.item_class, self.uri = item_class, uri
+
+        def get_uri(self):
+            return self.uri
+
+    class Fav:
+        def __init__(self, title, ref, art=""):
+            self.title, self._ref, self.album_art_uri = title, ref, art
+            self.description, self.resource_meta_data = "Radiosender", "<meta/>"
+
+        @property
+        def reference(self):
+            if self._ref is None:
+                raise ValueError("no resMD")
+            return self._ref
+
+    favs = [Fav("Radio Eins", Ref("object.item.audioItem.audioBroadcast", "x-sonosapi-stream:s1"), "/getaa?x"),
+            Fav("Party-Mix", Ref("object.container.playlistContainer", "x-rincon-cpcontainer:1")),
+            Fav("Kaputt", None)]
+    kitchen.music_library = type("ML", (), {"get_sonos_favorites": lambda self, complete_result: favs})()
+    played = []
+    kitchen.play_uri = lambda uri, meta, title="": played.append((uri, meta, title))
+
+    listed = ctl.favorites("Wohnzimmer")  # grouped: asks the coordinator
+    assert [f["title"] for f in listed] == ["Radio Eins", "Party-Mix", "Kaputt"]
+    assert listed[0]["art"] == "http://10.0.0.5:1400/getaa?x"
+
+    assert ctl.play_favorite("Wohnzimmer", 0) == "Radio Eins"
+    assert played == [("x-sonosapi-stream:s1", "<meta/>", "Radio Eins")]
+    kitchen.queue = ["a"]
+    assert ctl.play_favorite("Küche", 1) == "Party-Mix"
+    assert kitchen.queue[-1] is favs[1]._ref and kitchen.calls[-1] == ("play_from_queue", 1)
+    with pytest.raises(SonosError, match="Kaputt"):
+        ctl.play_favorite("Küche", 2)
+    with pytest.raises(SonosError):
+        ctl.play_favorite("Küche", 9)
+
+
+def test_crossfade_switch_and_status(setup):
+    ctl, kitchen, _ = setup
+    kitchen.cross_fade = False
+    ctl.control("Wohnzimmer", "crossfade", 1)
+    assert kitchen.cross_fade is True and ctl.status("Küche")["crossfade"] is True

@@ -458,6 +458,55 @@
     .eq i, .spinner { animation-duration: 3s; }
   }
 
+  /* ===== Sonos favourites ================================================================ */
+  .sf-card { flex: none; width: 128px; text-align: left; scroll-snap-align: start; scroll-margin-left: 16px; }
+  .sf-art { width: 128px; aspect-ratio: 1; border-radius: var(--radius); overflow: hidden; display: grid;
+            place-items: center; color: var(--accent);
+            background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 30%, var(--soft)), var(--soft)); }
+  .sf-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .sf-art svg { width: 44px; height: 44px; }
+  .sf-card .title { font-size: .875rem; margin-top: 8px; -webkit-line-clamp: 2; }
+  .sf-card:active .sf-art { transform: scale(.96); }
+  .sf-art { transition: transform .15s var(--ease); }
+
+  /* ===== lyrics =========================================================================== */
+  #lyricsSheet { height: 86vh; }
+  #lyricsBody { padding: 4px 22px 40vh; }
+  .lyric { display: block; width: 100%; text-align: left; font-size: 1.375rem; font-weight: 750;
+           letter-spacing: -.01em; line-height: 1.35; padding: 6px 0; color: var(--muted);
+           opacity: .55; transition: color .25s, opacity .25s, transform .25s var(--ease); }
+  .lyric.on { color: var(--text); opacity: 1; }
+  .lyric.past { opacity: .4; }
+  .lyric:empty::before { content: '♪'; }
+  .lyrics-plain { white-space: pre-line; font-size: 1.125rem; line-height: 1.6; padding-top: 6px; }
+  .credit { color: var(--muted); font-size: .75rem; margin-top: 18px; }
+
+  /* ===== alarms ============================================================================ */
+  .alarm-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+  .alarm-row .open { flex: 1; min-width: 0; text-align: left; }
+  .alarm-row .when { font-size: 1.75rem; font-weight: 750; letter-spacing: -.02em;
+                     font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .alarm-row.off .when, .alarm-row.off .sub { opacity: .45; }
+  .time-input { display: block; width: 100%; font-size: 3rem; font-weight: 800; text-align: center;
+                letter-spacing: -.02em; background: var(--soft); border: 0; border-radius: 16px;
+                padding: 10px; margin: 6px 0 12px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .days { display: flex; gap: 6px; justify-content: space-between; }
+  .days button { flex: 1; height: 42px; border-radius: 12px; background: var(--soft); font-weight: 650;
+                 font-size: .875rem; }
+  .days button[aria-pressed=true] { background: var(--accent); color: var(--accent-text); }
+  .days-hint { color: var(--muted); font-size: .8125rem; margin: 6px 2px 4px; }
+  .set select { flex: none; max-width: 58%; height: 40px; border-radius: 10px; border: 0; padding: 0 10px;
+                background: var(--soft); color: var(--text); font-weight: 600; }
+  .set select option { background: var(--raised); }
+  .set input[type=range] { flex: 1; max-width: 50%; }
+  .editor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+
+  /* ===== swipe feedback ====================================================================== */
+  .player .now, #art, #noart { transition: transform .2s var(--ease), opacity .2s; }
+  .player.nudge-left .now, .player.expanded.nudge-left #art { transform: translateX(-24px); opacity: .6; }
+  .player.nudge-right .now, .player.expanded.nudge-right #art { transform: translateX(24px); opacity: .6; }
+  .player.expanded .now { transform: none !important; opacity: 1 !important; }
+
   /* ===== toast + volume overlay ============================================================= */
   #toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
            bottom: calc(var(--nav-h) + var(--mini-h) + 22px + env(safe-area-inset-bottom));
@@ -509,6 +558,8 @@
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3 3 10.2V21h6.5v-6h5v6H21V10.2L12 3zm7 16h-2.5v-6h-9v6H5v-7.8l7-5.6 7 5.6V19z"/></symbol>
   <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 6H2v14a2 2 0 0 0 2 2h14v-2H4V6zm16-4H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 14H8V4h12v12zm-6.5-1a2.5 2.5 0 0 0 2.5-2.5V7h3V5h-4v5.51A2.47 2.47 0 0 0 13.5 10a2.5 2.5 0 0 0 0 5z"/></symbol>
   <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></symbol>
+  <symbol id="i-lyrics" viewBox="0 0 24 24"><path d="M4 6h12v2H4zm0 4h12v2H4zm0 4h8v2H4zm14-8v8.18A3 3 0 1 0 20 17V8h2V6h-4z"/></symbol>
+  <symbol id="i-alarm" viewBox="0 0 24 24"><path d="m22 5.72-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72zM7.88 3.39 6.6 1.86 2 5.71l1.29 1.53 4.59-3.85zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4a9 9 0 1 0 .01 18.01A9 9 0 0 0 12 4zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></symbol>
   <symbol id="i-note" viewBox="0 0 24 24"><path d="M12 3v10.600a4 4 0 1 0 2 3.400V7h4V3z"/></symbol>
 </svg>
 
@@ -558,6 +609,10 @@
     <div id="favBox" hidden>
       <div class="label">Favoriten</div>
       <ul class="tracklist rail" id="favorites"></ul>
+    </div>
+    <div id="sfBox" hidden>
+      <div class="label"><span>Sonos-Favoriten<small>Radiosender und Playlists aus deiner Sonos-App</small></span></div>
+      <div class="rail" id="sonosFavs"></div>
     </div>
     <div id="plBox" hidden>
       <div class="label">Deine Playlists</div>
@@ -664,7 +719,8 @@
       <button id="npFav" aria-pressed="false"><svg><use id="npFavIcon" href="#i-star-o"/></svg>Favorit</button>
       <button id="npRelated"><svg><use href="#i-radio"/></svg>Ähnliche</button>
       <button id="npPlaylist"><svg><use href="#i-plus"/></svg>Playlist</button>
-      <button id="npQueue"><svg><use href="#i-queue"/></svg>Warteschlange</button>
+      <button id="npLyrics"><svg><use href="#i-lyrics"/></svg>Songtext</button>
+      <button id="npQueue"><svg><use href="#i-queue"/></svg>Liste</button>
     </div>
   </div>
 </div>
@@ -681,6 +737,7 @@
     <button class="pill" id="optRepeat" aria-pressed="false">Wiederholen</button>
     <button class="pill" id="optAutoplay" aria-pressed="false">Autoplay</button>
     <button class="pill" id="optSleep" aria-pressed="false">Sleep-Timer</button>
+    <button class="pill" id="optCrossfade" aria-pressed="false">Überblenden</button>
     <button class="pill" id="saveQueue">Als Playlist speichern</button>
   </div>
   <div class="opts" id="sleepChoices" hidden>
@@ -754,6 +811,11 @@
     <div class="set"><span>Vibration beim Antippen</span>
       <button class="switch" data-toggle="haptics" role="switch" aria-label="Vibration beim Antippen"></button></div>
 
+    <div class="label">Wecker</div>
+    <div id="alarmList"></div>
+    <button class="menu-item" id="addAlarm"><svg><use href="#i-alarm"/></svg>
+      <span>Wecker hinzufügen<small>Musik zu einer festen Uhrzeit, sanft lauter werdend</small></span></button>
+
     <div class="label">Daten</div>
     <button class="menu-item" id="setClearSearch"><svg><use href="#i-history"/></svg><span>Suchverlauf löschen</span></button>
     <button class="menu-item" id="setClearHistory"><svg><use href="#i-close"/></svg><span>„Zuletzt gespielt“ leeren</span></button>
@@ -768,6 +830,43 @@
     <div class="label">Server und App</div>
     <a class="menu-item" id="setServer" href="sonosyt://settings" hidden><svg><use href="#i-gear"/></svg><span>Server-Adresse ändern</span></a>
     <div class="about" id="about"></div>
+  </div>
+</div>
+
+<div class="sheet" id="lyricsSheet" role="dialog" aria-label="Songtext" hidden>
+  <header>
+    <h2 id="lyricsTitle">Songtext</h2>
+    <button class="icon-btn" data-close aria-label="Schließen"><svg><use href="#i-close"/></svg></button>
+  </header>
+  <div class="body" id="lyricsBody"></div>
+</div>
+
+<div class="sheet" id="alarmSheet" role="dialog" aria-label="Wecker" hidden>
+  <header>
+    <h2 id="alarmTitle">Wecker</h2>
+    <button class="icon-btn" data-close aria-label="Schließen"><svg><use href="#i-close"/></svg></button>
+  </header>
+  <div class="body">
+    <input type="time" id="alTime" class="time-input" value="07:00" aria-label="Uhrzeit">
+    <div class="days" id="alDays" role="group" aria-label="Wochentage">
+      <button data-d="0">Mo</button><button data-d="1">Di</button><button data-d="2">Mi</button>
+      <button data-d="3">Do</button><button data-d="4">Fr</button><button data-d="5">Sa</button>
+      <button data-d="6">So</button>
+    </div>
+    <div class="days-hint" id="alDaysHint"></div>
+    <div class="set"><span>Raum</span><select id="alRoom" aria-label="Raum"></select></div>
+    <div class="set"><span>Musik</span><select id="alSource" aria-label="Musik"></select></div>
+    <div class="set"><span>Lautstärke</span>
+      <input type="range" id="alVol" min="1" max="60" value="20" aria-label="Lautstärke"><output id="alVolNum">20</output></div>
+    <div class="set"><span>Sanft lauter werden<small>Startet leise und erreicht die Lautstärke nach 90 Sekunden</small></span>
+      <button class="switch" id="alFade" role="switch" aria-label="Sanft lauter werden"></button></div>
+    <div class="set"><span>Zufällige Reihenfolge</span>
+      <button class="switch" id="alShuffle" role="switch" aria-label="Zufällige Reihenfolge"></button></div>
+    <div class="editor-actions">
+      <button class="pill primary" id="alSave">Speichern</button>
+      <button class="pill" id="alTest">Jetzt testen</button>
+      <button class="pill" id="alDelete">Löschen</button>
+    </div>
   </div>
 </div>
 
@@ -1002,7 +1101,7 @@ document.querySelectorAll('#tabs [data-tab]').forEach((b) => { b.onclick = () =>
 // ---- navigation: the back button closes sheets and leaves result lists --------
 
 const here = () => (history.state && history.state.kind) || 'home';
-const SHEETS = ['sheet', 'roomSheet', 'menuSheet', 'settingsSheet'];
+const SHEETS = ['sheet', 'roomSheet', 'menuSheet', 'settingsSheet', 'lyricsSheet', 'alarmSheet'];
 
 function hideSheets() {
   SHEETS.forEach((id) => { $(id).hidden = true; });
@@ -1084,12 +1183,49 @@ async function loadSpeakers(refresh) {
   showTabContent(list.length > 0 && view.kind === 'home');
   $('player').hidden = !list.length;
   tellApp();
+  if (!sonosFavs.length) loadSonosFavs();
   await refreshStatus();
+}
+
+// ---- Sonos favourites ---------------------------------------------------------------------
+
+let sonosFavs = [];
+async function loadSonosFavs() {
+  if (!speaker()) return;
+  try { sonosFavs = await api('/api/sonosfav?speaker=' + encodeURIComponent(speaker())); }
+  catch (e) { sonosFavs = []; }
+  renderSonosFavs();
+}
+
+function renderSonosFavs() {
+  $('sfBox').hidden = !sonosFavs.length;
+  $('sonosFavs').replaceChildren(...sonosFavs.map((f) => {
+    const card = el('button', 'sf-card');
+    card.setAttribute('aria-label', `${f.title} abspielen`);
+    const art = el('div', 'sf-art');
+    art.append(icon('radio'));
+    if (f.art) {
+      const img = el('img'); img.alt = ''; img.loading = 'lazy'; img.src = f.art;
+      img.onload = () => art.replaceChildren(img);
+      img.onerror = () => img.remove();
+    }
+    card.append(art, el('div', 'title', f.title));
+    card.onclick = async () => {
+      buzz();
+      try {
+        const r = await api('/api/sonosfav/play', {speaker: speaker(), index: f.index});
+        toast(`Spielt: ${r.title}`);
+      } catch (e) { toast(e.message, true); }
+      setTimeout(refreshStatus, 600);
+    };
+    return card;
+  }));
 }
 
 $('speaker').onchange = () => {
   store('speaker', speaker());
   tellApp();
+  loadSonosFavs();
   status = null; volume = null;
   refreshStatus();
 };
@@ -1783,6 +1919,8 @@ function paint() {
   $('dur').textContent = seekable ? fmt(s.duration) : (has && s.live ? 'LIVE' : ' ');
   paintOptions();
   if (!$('settingsSheet').hidden) paintSettings();
+  if (!$('lyricsSheet').hidden && has && s.video_id && s.video_id !== lyricsFor) loadLyrics();
+  $('npLyrics').disabled = !(has && s.video_id && !s.live);
   markCurrent();
   syncVideo();
 }
@@ -1879,28 +2017,106 @@ async function syncVideo() {
   });
 }
 
+// ---- lyrics ------------------------------------------------------------------------------
+
+let lyricsFor = null, lyricsData = null, lyricsLine = -1;
+
+async function loadLyrics() {
+  const t = nowTrack();
+  lyricsFor = t.id; lyricsData = null; lyricsLine = -1;
+  $('lyricsTitle').textContent = t.title || 'Songtext';
+  $('lyricsBody').replaceChildren(el('div', 'hint', 'Songtext wird gesucht …'));
+  let data;
+  try { data = await api('/api/lyrics?id=' + encodeURIComponent(t.id)); }
+  catch (e) { data = {found: false}; }
+  if (lyricsFor !== t.id) return;   // the track changed meanwhile
+  lyricsData = data;
+  renderLyrics();
+}
+
+function renderLyrics() {
+  const d = lyricsData;
+  const body = $('lyricsBody');
+  if (!d || !d.found) {
+    return body.replaceChildren(el('div', 'hint', 'Für diesen Titel wurde kein Songtext gefunden.'));
+  }
+  if (d.instrumental) return body.replaceChildren(el('div', 'hint', 'Instrumental – dieser Titel hat keinen Text.'));
+  const nodes = [];
+  if (d.synced.length) {
+    d.synced.forEach(([time, line]) => {
+      const b = el('button', 'lyric', line);
+      b.onclick = () => { if (status && !status.live) { status.position = time; statusAt = Date.now(); control('seek', Math.floor(time)); } };
+      nodes.push(b);
+    });
+  } else {
+    nodes.push(el('div', 'lyrics-plain', d.plain));
+  }
+  nodes.push(el('div', 'credit', 'Songtext: LRCLIB' + (d.synced.length ? ' · Zeile antippen springt dorthin' : '')));
+  body.replaceChildren(...nodes);
+  lyricsLine = -1;
+  followLyrics();
+}
+
+// Highlights the line being sung and keeps it in view.
+function followLyrics() {
+  if ($('lyricsSheet').hidden || !lyricsData || !lyricsData.synced || !lyricsData.synced.length) return;
+  const pos = livePosition() + 0.25;
+  let index = -1;
+  lyricsData.synced.forEach(([time], i) => { if (time <= pos) index = i; });
+  if (index === lyricsLine) return;
+  lyricsLine = index;
+  const lines = $('lyricsBody').querySelectorAll('.lyric');
+  lines.forEach((line, i) => { line.classList.toggle('on', i === index); line.classList.toggle('past', i < index); });
+  if (index >= 0) lines[index].scrollIntoView({block: 'center', behavior: 'smooth'});
+}
+setInterval(followLyrics, 300);
+
+function openLyrics() {
+  if (!status || !status.video_id) return toast('Songtexte gibt es nur für YouTube-Titel.', true);
+  openSheet('lyricsSheet');
+  if (lyricsFor !== status.video_id) loadLyrics(); else renderLyrics();
+}
+
 // ---- full-screen player ------------------------------------------------------------------
 
 const nowTrack = () => ({id: status.video_id, title: status.title, uploader: status.artist || ''});
 ['nowMeta', 'art', 'noart'].forEach((id) => { $(id).onclick = expandPlayer; });
 $('npClose').onclick = () => { if (here() === 'player') history.back(); else collapsePlayer(); };
 
-// Swiping down anywhere but on a slider closes the full-screen player.
+// Gestures on the player: swipe down closes the full-screen view; swipe sideways
+// on the cover (or on the mini player) skips to the next or previous track.
 let swipe = null;
 $('player').addEventListener('touchstart', (e) => {
-  const open = $('player').classList.contains('expanded') && here() === 'player'
-    && $('player').scrollTop === 0;   // while scrolled, a downward drag just scrolls back
-  swipe = open && !e.target.closest('input, #npVideo iframe')
-    ? {x: e.touches[0].clientX, y: e.touches[0].clientY} : null;
+  const expanded = $('player').classList.contains('expanded');
+  if (e.target.closest('input, button:not(#npClose)') && !e.target.closest('#nowMeta')) { swipe = null; return; }
+  swipe = {x: e.touches[0].clientX, y: e.touches[0].clientY, expanded,
+           onCover: !expanded || !!e.target.closest('#art, #noart, #npVideo, #nowMeta'),
+           atTop: !expanded || $('player').scrollTop === 0};
+}, {passive: true});
+$('player').addEventListener('touchmove', (e) => {
+  if (!swipe || !swipe.onCover) return;
+  const dx = e.touches[0].clientX - swipe.x, dy = e.touches[0].clientY - swipe.y;
+  const sideways = Math.abs(dx) > 30 && Math.abs(dy) < Math.abs(dx) / 2;
+  $('player').classList.toggle('nudge-left', sideways && dx < 0);
+  $('player').classList.toggle('nudge-right', sideways && dx > 0);
 }, {passive: true});
 $('player').addEventListener('touchend', (e) => {
+  $('player').classList.remove('nudge-left', 'nudge-right');
   if (!swipe) return;
   const dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
+  const s = swipe;
   swipe = null;
-  if (dy > 90 && Math.abs(dx) < dy / 2) $('npClose').onclick();
+  if (s.onCover && Math.abs(dx) > 70 && Math.abs(dy) < Math.abs(dx) / 2) {
+    buzz();
+    control(dx < 0 ? 'next' : 'previous');
+    toast(dx < 0 ? 'Nächster Titel' : 'Vorheriger Titel');
+  } else if (s.expanded && s.atTop && here() === 'player' && dy > 90 && Math.abs(dx) < dy / 2) {
+    $('npClose').onclick();
+  }
 }, {passive: true});
 $('npRooms').onclick = () => $('openRooms').onclick();
 $('npQueue').onclick = () => openQueue();
+$('npLyrics').onclick = () => openLyrics();
 $('npFav').onclick = async () => { buzz(); await toggleFavorite(nowTrack()); paint(); };
 $('npRelated').onclick = () => { const t = nowTrack(); leavePlayer(() => showRelated(t)); };
 $('npPlaylist').onclick = () => openMenu(nowTrack(), null, true);
@@ -2086,6 +2302,7 @@ $('clearQueue').onclick = async () => { await control('clear'); closeSheet(); to
 
 function paintOptions() {
   const s = status || {};
+  $('optCrossfade').setAttribute('aria-pressed', !!s.crossfade);
   $('optShuffle').setAttribute('aria-pressed', !!s.shuffle);
   $('optRepeat').setAttribute('aria-pressed', !!s.repeat);
   $('optRepeat').textContent = s.repeat === 2 ? 'Wiederholen: Titel' : s.repeat === 1 ? 'Wiederholen: alle' : 'Wiederholen';
@@ -2095,6 +2312,13 @@ function paintOptions() {
 }
 
 $('optShuffle').onclick = () => control('shuffle', status && status.shuffle ? 0 : 1);
+$('optCrossfade').onclick = () => {
+  const on = !(status && status.crossfade);
+  if (status) status.crossfade = on;
+  paintOptions();
+  control('crossfade', on ? 1 : 0);
+  toast(on ? 'Überblenden an' : 'Überblenden aus');
+};
 $('optRepeat').onclick = () => control('repeat', ((status ? status.repeat : 0) + 1) % 3);
 $('optAutoplay').onclick = async () => {
   const on = !(status && status.autoplay);
@@ -2261,11 +2485,139 @@ function showInfo(info) {
   $('about').textContent = `Server ${info.version} · yt-dlp ${info.ytdlp}` + (app ? ` · App ${app[1]}` : '');
 }
 
-$('openSettings').onclick = async () => {
+// ---- alarms ------------------------------------------------------------------------------
+
+const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+let alarms = [], editing = null;
+
+function daysText(days) {
+  const set = days.join(',');
+  if (!days.length) return 'Einmalig';
+  if (days.length === 7) return 'Täglich';
+  if (set === '0,1,2,3,4') return 'Mo–Fr';
+  if (set === '5,6') return 'Am Wochenende';
+  return days.map((d) => DAY_NAMES[d]).join(', ');
+}
+
+function sourceText(src) {
+  return src.type === 'favorites' ? 'Favoriten' : src.type === 'playlist' ? src.name : src.title || 'Sonos-Favorit';
+}
+
+async function loadAlarms() {
+  try { alarms = await api('/api/alarms'); } catch (e) { alarms = []; }
+  renderAlarms();
+}
+
+function renderAlarms() {
+  $('alarmList').replaceChildren(...alarms.map((a) => {
+    const row = el('div', 'alarm-row' + (a.enabled ? '' : ' off'));
+    const open = el('button', 'open');
+    open.setAttribute('aria-label', `Wecker ${a.time} bearbeiten`);
+    open.append(el('div', 'when', a.time), el('div', 'sub', `${daysText(a.days)} · ${a.speaker} · ${sourceText(a.source)}`));
+    open.onclick = () => editAlarm(a);
+    const toggle = el('button', 'switch');
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-label', `Wecker ${a.time} ein oder aus`);
+    toggle.setAttribute('aria-checked', a.enabled);
+    toggle.onclick = async () => {
+      try { alarms = await api('/api/alarms', {op: 'save', alarm: {...a, enabled: !a.enabled}}); renderAlarms(); }
+      catch (e) { toast(e.message, true); }
+    };
+    row.append(open, toggle);
+    return row;
+  }));
+}
+
+function option(value, label) { const o = el('option', '', label); o.value = value; return o; }
+
+function editAlarm(alarm) {
+  editing = alarm ? {...alarm} : {time: '07:00', days: [0, 1, 2, 3, 4], speaker: speaker(), volume: 20,
+                                  fade: true, shuffle: false, enabled: true, source: {type: 'favorites'}};
+  $('alarmTitle').textContent = alarm ? 'Wecker bearbeiten' : 'Neuer Wecker';
+  $('alTime').value = editing.time;
+  $('alRoom').replaceChildren(...[...$('speaker').options].map((o) => option(o.value, o.value)));
+  if (![...$('alRoom').options].some((o) => o.value === editing.speaker)) $('alRoom').append(option(editing.speaker, editing.speaker));
+  $('alRoom').value = editing.speaker;
+  const sources = [option('favorites', 'Favoriten')];
+  library.playlists.forEach((p) => sources.push(option('playlist:' + p.name, 'Playlist: ' + p.name)));
+  sonosFavs.forEach((f) => sources.push(option('sonosfav:' + f.index, 'Sonos: ' + f.title)));
+  $('alSource').replaceChildren(...sources);
+  const src = editing.source;
+  const current = src.type === 'playlist' ? 'playlist:' + src.name : src.type === 'sonosfav' ? 'sonosfav:' + src.index : 'favorites';
+  if (![...$('alSource').options].some((o) => o.value === current)) $('alSource').append(option(current, sourceText(src)));
+  $('alSource').value = current;
+  $('alVol').value = editing.volume; $('alVolNum').textContent = editing.volume; fill($('alVol'));
+  $('alDelete').hidden = $('alTest').hidden = !alarm;
+  paintAlarmEditor();
+  openSheet('alarmSheet');
+}
+
+function paintAlarmEditor() {
+  document.querySelectorAll('#alDays [data-d]').forEach((b) => {
+    b.setAttribute('aria-pressed', editing.days.includes(Number(b.dataset.d)));
+  });
+  $('alDaysHint').textContent = editing.days.length ? daysText(editing.days) : 'Kein Tag gewählt: klingelt einmal, dann aus.';
+  $('alFade').setAttribute('aria-checked', !!editing.fade);
+  $('alShuffle').setAttribute('aria-checked', !!editing.shuffle);
+}
+
+document.querySelectorAll('#alDays [data-d]').forEach((b) => {
+  b.onclick = () => {
+    const d = Number(b.dataset.d);
+    editing.days = editing.days.includes(d) ? editing.days.filter((x) => x !== d) : [...editing.days, d].sort();
+    paintAlarmEditor();
+  };
+});
+$('alFade').onclick = () => { editing.fade = !editing.fade; paintAlarmEditor(); };
+$('alShuffle').onclick = () => { editing.shuffle = !editing.shuffle; paintAlarmEditor(); };
+$('alVol').oninput = () => { $('alVolNum').textContent = $('alVol').value; fill($('alVol')); };
+
+function alarmFromEditor(enable) {
+  const [type, ...rest] = $('alSource').value.split(':');
+  const value = rest.join(':');
+  const source = type === 'playlist' ? {type, name: value}
+    : type === 'sonosfav' ? {type, index: Number(value),
+                             title: (sonosFavs.find((f) => f.index === Number(value)) || editing.source).title}
+    : {type: 'favorites'};
+  return {...editing, time: $('alTime').value, speaker: $('alRoom').value, volume: Number($('alVol').value),
+          source, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          enabled: enable ? true : editing.enabled !== false};
+}
+
+$('alSave').onclick = async () => {
+  try {
+    alarms = await api('/api/alarms', {op: 'save', alarm: alarmFromEditor(true)});   // saving switches it on
+    toast(`Wecker ${$('alTime').value} gespeichert`);
+    openSettingsSheet();
+  } catch (e) { toast(e.message, true); }
+};
+$('alDelete').onclick = async () => {
+  try { alarms = await api('/api/alarms', {op: 'delete', id: editing.id}); toast('Wecker gelöscht'); openSettingsSheet(); }
+  catch (e) { toast(e.message, true); }
+};
+$('alTest').onclick = async () => {
+  try {
+    alarms = await api('/api/alarms', {op: 'save', alarm: alarmFromEditor()});
+    const r = await api('/api/alarms', {op: 'test', id: editing.id});
+    toast(`Test: ${r.playing}`);
+    setTimeout(refreshStatus, 800);
+  } catch (e) { toast(e.message, true); }
+};
+$('addAlarm').onclick = () => {
+  if (!library.favorites.length && !library.playlists.length && !sonosFavs.length) {
+    return toast('Lege zuerst Favoriten oder eine Playlist an – die spielt der Wecker dann ab.', true);
+  }
+  editAlarm(null);
+};
+
+async function openSettingsSheet() {
   paintSettings();
   openSheet('settingsSheet');
+  loadAlarms();
   try { showInfo(await api('/api/info')); } catch (e) { /* stays blank */ }
-};
+}
+
+$('openSettings').onclick = openSettingsSheet;
 function checkLine(state, title, detail) {
   const line = el('div', 'check-line' + (state === true ? '' : state === false ? ' bad' : ' unknown'));
   const text = el('span', '', title);
@@ -2359,8 +2711,14 @@ document.addEventListener('visibilitychange', () => {
 
 (async () => {
   await loadSpeakers(false);
+  const params = new URLSearchParams(location.search);
+  const tab = params.get('tab');   // from the app's launcher shortcuts
+  if (['search', 'library', 'home'].includes(tab) && !params.get('q')) {
+    history.replaceState(null, '', location.pathname);
+    selectTab(tab);
+  }
   // Links shared from the phone app arrive as /?q=<link>.
-  const shared = new URLSearchParams(location.search).get('q');
+  const shared = params.get('q');
   if (!shared) return;
   history.replaceState(null, '', location.pathname);
   markTab('search');

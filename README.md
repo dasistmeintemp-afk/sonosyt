@@ -77,6 +77,17 @@ Danach:
   und den Sleep-Timer.
 - **Räume** (Symbol oben rechts): Räume zusammenschalten und jeden einzeln in der Lautstärke
   regeln.
+- **Sonos-Favoriten:** Radiosender und Playlists aus der Sonos-App erscheinen auf „Start" und
+  starten mit einem Tipp.
+- **Songtexte** (Knopf „Songtext" in der großen Wiedergabe-Ansicht) kommen von
+  [LRCLIB](https://lrclib.net); wo vorhanden laufen sie zeilengenau mit, ein Tipp auf eine Zeile
+  springt dorthin.
+- **Wecker** (Einstellungen → Wecker): zu einer Uhrzeit an gewählten Wochentagen Favoriten, eine
+  Playlist oder einen Sonos-Favoriten in einem Raum starten, auf Wunsch sanft lauter werdend.
+  Der Server weckt – das Handy muss dafür nicht an sein.
+- **Wischen** auf dem Cover oder dem Mini-Player wechselt zum nächsten oder vorherigen Titel;
+  **Überblenden** lässt sich in der Warteschlange einschalten.
+- **Langes Drücken auf das App-Symbol** bietet „Suchen" und „Bibliothek" direkt an.
 - **Lange Videos** (ab 20 Minuten) werden beim nächsten Abspielen dort fortgesetzt, wo du
   aufgehört hast.
 - **Lautsprecher-Symbol** neben dem Lautstärkeregler schaltet stumm. Unter **Räume** öffnet das

@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from . import __version__, youtube
 from .library import Library
+from .lyrics import Lyrics
 from .sonos import SonosController, SonosError, local_ip_for
 from .transcode import Transcoder
 from .youtube import Track, YouTubeError
@@ -95,6 +96,8 @@ class App:
     ):
         self.suggest = suggest
         self.fetch_thumbnail = fetch_thumbnail
+        self.lyrics = Lyrics()
+        self._alarm_fired: dict[str, str] = {}  # alarm id -> "date time" it last went off
         hosts = {h.strip().lower() for h in allowed_hosts or [] if h.strip()}
         if public_url:
             hosts.add((urlsplit(public_url).hostname or "").lower())
@@ -289,8 +292,82 @@ class App:
         self.transcoder.prefetch([upcoming["video_id"]])
         return upcoming["video_id"]
 
+    # -- alarms ------------------------------------------------------------------
+
+    def due_alarms(self, now=None) -> list[dict]:
+        """Alarms whose minute has come and that have not gone off for it yet."""
+        from datetime import datetime, timezone
+        from zoneinfo import ZoneInfo
+
+        now = now or datetime.now(timezone.utc)
+        due = []
+        for alarm in self.library.alarms():
+            if not alarm["enabled"]:
+                continue
+            local = now.astimezone(ZoneInfo(alarm["tz"]))
+            key = f"{local:%Y-%m-%d} {alarm['time']}"
+            if local.strftime("%H:%M") != alarm["time"] or self._alarm_fired.get(alarm["id"]) == key:
+                continue
+            if alarm["days"] and local.weekday() not in alarm["days"]:
+                continue
+            self._alarm_fired[alarm["id"]] = key
+            due.append(alarm)
+        return due
+
+    def fire_alarm(self, alarm: dict, ramp_seconds: float = 90.0) -> str:
+        """Start what an alarm plays. Returns a short description."""
+        import random
+
+        speaker, source, target = alarm["speaker"], alarm["source"], alarm["volume"]
+        start_volume = min(3, target) if alarm["fade"] else target
+        self.sonos.set_volume(speaker, start_volume)
+        if source["type"] == "sonosfav":
+            what = self.sonos.play_favorite(speaker, source["index"])
+        else:
+            if source["type"] == "playlist":
+                tracks = next((p["tracks"] for p in self.library.snapshot()["playlists"]
+                               if p["name"] == source["name"]), None)
+                if tracks is None:
+                    raise YouTubeError(f"Die Playlist „{source['name']}“ gibt es nicht mehr.")
+                what = source["name"]
+            else:
+                tracks, what = self.library.snapshot()["favorites"], "Favoriten"
+            ids = [t["id"] for t in tracks if not t.get("live")]
+            if not ids:
+                raise YouTubeError(f"„{what}“ ist leer.")
+            if alarm["shuffle"]:
+                random.shuffle(ids)
+            self.play(speaker, ids[:100], None, "now")
+        if alarm["fade"] and target > start_volume:
+            def ramp():
+                steps = 15
+                for i in range(1, steps + 1):
+                    time.sleep(ramp_seconds / steps)
+                    try:
+                        self.sonos.set_volume(speaker, start_volume + (target - start_volume) * i // steps)
+                    except Exception:  # noqa: BLE001 - speaker busy: try the next step
+                        continue
+            threading.Thread(target=ramp, name="alarm-fade", daemon=True).start()
+        if not alarm["days"]:
+            self.library.disable_alarm(alarm["id"])  # a one-off alarm is done
+        log.info("alarm %s in %s: %s", alarm["time"], speaker, what)
+        return what
+
+    def check_alarms(self) -> None:
+        for alarm in self.due_alarms():
+            def run(alarm=alarm):
+                try:
+                    self.fire_alarm(alarm)
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("alarm %s failed: %s", alarm["time"], exc)
+            threading.Thread(target=run, name="alarm", daemon=True).start()
+
     def monitor_once(self) -> None:
         """One round of background care for the rooms in use."""
+        try:
+            self.check_alarms()
+        except Exception as exc:  # noqa: BLE001
+            log.warning("alarm check failed: %s", exc)
         now = time.monotonic()
         self._active = {s: t for s, t in self._active.items() if now - t < 12 * 3600}
         autoplay = set(self.library.autoplay_speakers())
@@ -426,6 +503,15 @@ class Handler(BaseHTTPRequestHandler):
             return self._guard(lambda: self.app.sonos.rooms(speaker))
         if url.path == "/api/info":
             return self._guard(self.app.info)
+        if url.path == "/api/alarms":
+            return self._guard(self.app.library.alarms)
+        if url.path == "/api/sonosfav":
+            speaker = query.get("speaker", [""])[0]
+            return self._guard(lambda: self.app.sonos.favorites(speaker))
+        if url.path == "/api/lyrics":
+            def lyrics():
+                return self.app.lyrics.get(self.app.track(youtube.watch_id(query.get("id", [""])[0])))
+            return self._guard(lyrics)
         if url.path == "/api/library":
             return self._guard(self.app.library.snapshot)
         self._error(404, "not found")
@@ -519,6 +605,33 @@ class Handler(BaseHTTPRequestHandler):
                 self.app.library.set_autoplay(speaker, bool(body.get("on")))
                 return {"autoplay": self.app.library.autoplay(speaker)}
             return self._guard(autoplay)
+        if path == "/api/sonosfav/play":
+            def play_favorite():
+                body = self._body()
+                speaker = str(body["speaker"])
+                title = self.app.sonos.play_favorite(speaker, int(body["index"]))
+                self.app._active[speaker] = time.monotonic()
+                return {"title": title}
+            return self._guard(play_favorite)
+        if path == "/api/alarms":
+            def alarms():
+                body = self._body()
+                op = body.get("op") or "save"
+                if op == "save":
+                    alarm = dict(body["alarm"])
+                    self.app.sonos.get(str(alarm.get("speaker") or ""))  # the room must exist
+                    self.app.library.save_alarm(alarm)
+                elif op == "delete":
+                    self.app.library.delete_alarm(str(body["id"]))
+                elif op == "test":
+                    alarm = next((a for a in self.app.library.alarms() if a["id"] == body["id"]), None)
+                    if alarm is None:
+                        raise ValueError("Diesen Wecker gibt es nicht.")
+                    return {"playing": self.app.fire_alarm({**alarm, "days": [0]}, ramp_seconds=20)}
+                else:
+                    raise ValueError("op must be save, delete or test")
+                return self.app.library.alarms()
+            return self._guard(alarms)
         if path == "/api/eq":
             def eq():
                 body = self._body()

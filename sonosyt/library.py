@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
+import uuid
 from pathlib import Path
 
 from .youtube import Track
@@ -21,6 +23,7 @@ class Library:
         self._autoplay: set[str] = set()
         self._playlists: dict[str, list[Track]] = {}
         self._positions: dict[str, int] = {}  # video id -> seconds, to resume long videos
+        self._alarms: list[dict] = []
         self._load()
 
     def _load(self) -> None:
@@ -50,6 +53,11 @@ class Library:
                     self._positions[str(video_id)] = int(seconds)
                 except (TypeError, ValueError):
                     continue
+        for alarm in data.get("alarms") or []:
+            try:
+                self._alarms.append(normalize_alarm(alarm))
+            except (ValueError, TypeError, KeyError):
+                continue
         for entry in data.get("playlists") or []:
             if isinstance(entry, dict) and entry.get("name"):
                 self._playlists[str(entry["name"])] = tracks("tracks", entry)
@@ -61,6 +69,7 @@ class Library:
             "autoplay": sorted(self._autoplay),
             "playlists": self._playlist_dicts(),
             "positions": self._positions,
+            "alarms": self._alarms,
         }
         tmp = self.path.with_suffix(".tmp")
         try:
@@ -159,6 +168,39 @@ class Library:
         with self._lock:
             return {t.id for t in self._history}
 
+    # -- alarms ------------------------------------------------------------------
+
+    def alarms(self) -> list[dict]:
+        with self._lock:
+            return [dict(a) for a in self._alarms]
+
+    def save_alarm(self, data: dict) -> dict:
+        alarm = normalize_alarm(data)
+        with self._lock:
+            for i, old in enumerate(self._alarms):
+                if old["id"] == alarm["id"]:
+                    self._alarms[i] = alarm
+                    break
+            else:
+                if len(self._alarms) >= 20:
+                    raise ValueError("Höchstens 20 Wecker.")
+                self._alarms.append(alarm)
+            self._alarms.sort(key=lambda a: a["time"])
+            self._save()
+        return alarm
+
+    def delete_alarm(self, alarm_id: str) -> None:
+        with self._lock:
+            self._alarms = [a for a in self._alarms if a["id"] != alarm_id]
+            self._save()
+
+    def disable_alarm(self, alarm_id: str) -> None:
+        with self._lock:
+            for alarm in self._alarms:
+                if alarm["id"] == alarm_id:
+                    alarm["enabled"] = False
+            self._save()
+
     # -- resume positions ------------------------------------------------------
 
     def position(self, video_id: str) -> int:
@@ -196,3 +238,53 @@ class Library:
         with self._lock:
             (self._autoplay.add if on else self._autoplay.discard)(speaker)
             self._save()
+
+
+def normalize_alarm(data: dict) -> dict:
+    """A checked, complete alarm. Raises ValueError for anything unusable."""
+    from zoneinfo import ZoneInfo
+
+    if not isinstance(data, dict):
+        raise ValueError("Wecker fehlt.")
+    time_text = str(data.get("time") or "")
+    if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", time_text):
+        raise ValueError("Uhrzeit im Format HH:MM angeben.")
+    days = sorted({int(d) for d in data.get("days") or []})
+    if any(d < 0 or d > 6 for d in days):
+        raise ValueError("Wochentage 0 (Montag) bis 6 (Sonntag).")
+    speaker = str(data.get("speaker") or "").strip()
+    if not speaker:
+        raise ValueError("Raum fehlt.")
+    source = data.get("source") or {}
+    kind = source.get("type")
+    if kind == "playlist":
+        clean_source = {"type": kind, "name": str(source.get("name") or "")[:60]}
+        if not clean_source["name"]:
+            raise ValueError("Playlist fehlt.")
+    elif kind == "favorites":
+        clean_source = {"type": kind}
+    elif kind == "sonosfav":
+        clean_source = {"type": kind, "index": int(source.get("index")),
+                        "title": str(source.get("title") or "")[:120]}
+    else:
+        raise ValueError("Was soll der Wecker spielen?")
+    zone = str(data.get("tz") or "UTC")
+    try:
+        ZoneInfo(zone)
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError(f"Unbekannte Zeitzone: {zone}") from exc
+    alarm_id = str(data.get("id") or uuid.uuid4().hex[:12])
+    if not re.fullmatch(r"[A-Za-z0-9]{1,32}", alarm_id):
+        raise ValueError("Ungültige Wecker-ID.")
+    return {
+        "id": alarm_id,
+        "time": time_text,
+        "days": days,  # empty: once, at the next occurrence
+        "speaker": speaker[:100],
+        "source": clean_source,
+        "volume": max(1, min(100, int(data.get("volume", 20)))),
+        "fade": bool(data.get("fade", True)),
+        "shuffle": bool(data.get("shuffle", False)),
+        "enabled": bool(data.get("enabled", True)),
+        "tz": zone,
+    }
