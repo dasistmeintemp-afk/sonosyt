@@ -93,8 +93,14 @@ Danach:
   Griff rechts verschieben, antippen zum Springen). Dort gibt es
   auch Zufall, Wiederholen, Autoplay (nach dem letzten Titel läuft passende Musik weiter)
   und den Sleep-Timer.
-- **Räume** (Symbol oben rechts): Räume zusammenschalten und jeden einzeln in der Lautstärke
-  regeln.
+- **Räume gruppieren direkt beim Abspielen:** In der großen Wiedergabe-Ansicht zeigt der Knopf
+  unten (bzw. „Spielt in …" oben) den Raum samt Gruppe, z. B. „Familienzimmer +1". Ein Tipp öffnet
+  die Raumauswahl: Räume ankreuzen (oder „Alle"), dann **Übernehmen** – erst dann wird gruppiert.
+  Die Lautstärke je Raum lässt sich dort sofort regeln. Auch der Mini-Player hat dafür einen
+  Lautsprecher-Knopf, der die Anzahl der Räume in der Gruppe zeigt.
+- **Große Wiedergabe-Ansicht:** Stern zum Merken direkt neben dem Titel, Zufall und Wiederholen
+  neben den Wiedergabetasten, ⋯ für alle Aktionen zum Titel (z. B. „Ähnliche Titel"); ein Tipp
+  auf die Gesamtdauer zeigt stattdessen die Restzeit.
 - **Räume** (untere Leiste): jeder Raum als Karte mit dem, was läuft, Play/Pause und Lautstärke;
   ein Tipp auf den Namen wählt ihn aus, „Alle pausieren" stoppt überall.
 - **Voreinstellungen** (oben auf „Start"): Musik, Räume und Lautstärke zusammen speichern und mit

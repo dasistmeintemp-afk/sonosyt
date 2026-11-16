@@ -287,7 +287,7 @@
   .player.expanded .now { display: contents; }
   .player.expanded #npHead { order: 0; align-items: center; gap: 8px; height: 52px; margin: 0 -10px; }
   .player.expanded #npHead .icon-btn { color: var(--text); }
-  .player.expanded #npRoom { flex: 1; text-align: center; line-height: 1.2; }
+
   #npRoom small { display: block; font-size: .6875rem; font-weight: 700; letter-spacing: .1em;
                   text-transform: uppercase; color: var(--muted); }
   #npRoom b { font-size: .9375rem; font-weight: 650; white-space: nowrap; overflow: hidden;
@@ -312,13 +312,6 @@
   .player.expanded .transport button:active { background: color-mix(in srgb, var(--text) 12%, transparent); }
   .player.expanded .transport #toggle:active { background: var(--text); transform: scale(.94); }
   .player.expanded .volume { order: 6; margin-top: 2px; }
-  .player.expanded #npExtras { order: 7; justify-content: space-between; gap: 8px; margin: 18px 0 auto; }
-  #npExtras button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
-                     padding: 10px 4px; border-radius: 14px; font-size: .75rem; font-weight: 600;
-                     color: var(--muted); background: color-mix(in srgb, var(--text) 7%, transparent); }
-  #npExtras button:active { background: color-mix(in srgb, var(--text) 14%, transparent); }
-  #npExtras button[aria-pressed=true] { color: var(--accent); }
-  #npExtras button:disabled { opacity: .35; }
   .player.expanded #npVideo { display: none; }
   .player.expanded.video #npVideo { display: block; order: 1; position: relative; width: 100%;
       aspect-ratio: 16/9; border-radius: 18px; overflow: hidden; margin: auto 0 0;
@@ -331,7 +324,7 @@
     .player.expanded #nowTitle { font-size: 1.25rem; }
     .player.expanded .transport { margin: 6px 0; }
     .player.expanded .transport #toggle { width: 68px; height: 68px; }
-    .player.expanded #npExtras { margin-top: 8px; }
+    .player.expanded #npBar { padding-top: 8px; }
     .player.expanded #npHead { height: 44px; }
   }
   @media (orientation: landscape) and (max-height: 520px) {
@@ -577,6 +570,49 @@
   .player:not(.expanded) #volNum { color: var(--muted); }
   .player:not(.expanded) #miniBar { display: none; }
 
+  /* ===== player: modes, star, bottom bar, mini group button =================================== */
+  .mini-only { display: grid; }
+  .player:not(.expanded) .np-only { display: none !important; }
+  .player.expanded .mini-only { display: none !important; }
+  #miniGroup { position: relative; }
+  #miniGroup svg { width: 22px; height: 22px; }
+  .badge { position: absolute; top: 4px; right: 2px; min-width: 16px; height: 16px; border-radius: 8px;
+           padding: 0 4px; font-size: .6875rem; font-weight: 700; line-height: 16px; text-align: center;
+           background: var(--on-tint); color: color-mix(in srgb, rgb(var(--tint)) 70%, #000); }
+  .player.expanded #nowMeta { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: center; }
+  .player.expanded #nowMeta .title, .player.expanded #nowMeta .sub { grid-column: 1; }
+  .player.expanded #npStar { grid-column: 2; grid-row: 1 / span 2; color: var(--muted); }
+  .player.expanded #npStar[aria-pressed=true] { color: var(--accent); }
+  .player.expanded .transport { justify-content: space-between; gap: 0; }
+  .player.expanded .transport .mode { width: 48px; height: 48px; color: var(--muted); }
+  .player.expanded .transport .mode svg { width: 26px; height: 26px; }
+  .player.expanded .transport .mode[aria-pressed=true] { color: var(--accent); }
+  .player.expanded .transport .mode:disabled { opacity: .3; }
+  .player.expanded .queue-btn { display: none; }
+  #dur { cursor: pointer; }
+  .player.expanded #npBar { order: 7; align-items: center; justify-content: space-between; gap: 8px;
+                            margin-top: auto; padding-top: 18px; }
+  #npBar .icon-btn { color: var(--text); }
+  #npRoomsBtn { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 60%; height: 44px;
+                padding: 0 16px; border-radius: 22px; font-weight: 650;
+                background: color-mix(in srgb, var(--text) 10%, transparent); }
+  #npRoomsBtn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #npRoomsBtn svg { flex: none; width: 20px; height: 20px; }
+  #npRoom { flex: 1; min-width: 0; text-align: center; line-height: 1.2; }
+  .player.expanded #art, .player.expanded #noart, .player.expanded.video #npVideo { margin-top: 10px; }
+
+  /* ===== room picker ===================================================================== */
+  .pick-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 2px 0 6px; }
+  .pick-top .sub { white-space: normal; }
+  .pick-top .pill { flex: none; white-space: nowrap; }
+  #roomSheet .check { border-radius: 50%; width: 26px; height: 26px; }
+  #roomSheet .room-row:not(.on) .vol { display: none; }
+  #roomSheet .room-row.changed .head span:last-child::after { content: ' •'; color: var(--accent); }
+  .sheet-foot { padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+  .sheet-foot .pill { width: 100%; justify-content: center; height: 50px; font-size: 1rem; }
+  .sheet-foot .pill:disabled { opacity: .45; }
+  .sheet:has(.sheet-foot) { padding-bottom: 0; }
+
   /* ===== toast + volume overlay ============================================================= */
   #toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
            bottom: calc(var(--nav-h) + var(--mini-h) + 22px + env(safe-area-inset-bottom));
@@ -628,9 +664,11 @@
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3 3 10.2V21h6.5v-6h5v6H21V10.2L12 3zm7 16h-2.5v-6h-9v6H5v-7.8l7-5.6 7 5.6V19z"/></symbol>
   <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 6H2v14a2 2 0 0 0 2 2h14v-2H4V6zm16-4H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 14H8V4h12v12zm-6.5-1a2.5 2.5 0 0 0 2.5-2.5V7h3V5h-4v5.51A2.47 2.47 0 0 0 13.5 10a2.5 2.5 0 0 0 0 5z"/></symbol>
   <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></symbol>
-  <symbol id="i-lyrics" viewBox="0 0 24 24"><path d="M4 6h12v2H4zm0 4h12v2H4zm0 4h8v2H4zm14-8v8.18A3 3 0 1 0 20 17V8h2V6h-4z"/></symbol>
+  <symbol id="i-lyrics" viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h10v2H7zm0-3h10v2H7zm0 6h7v2H7z"/></symbol>
   <symbol id="i-alarm" viewBox="0 0 24 24"><path d="m22 5.72-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72zM7.88 3.39 6.6 1.86 2 5.71l1.29 1.53 4.59-3.85zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4a9 9 0 1 0 .01 18.01A9 9 0 0 0 12 4zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></symbol>
   <symbol id="i-add" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></symbol>
+  <symbol id="i-repeat-one" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z"/></symbol>
   <symbol id="i-note" viewBox="0 0 24 24"><path d="M12 3v10.600a4 4 0 1 0 2 3.400V7h4V3z"/></symbol>
 </svg>
 
@@ -773,8 +811,8 @@
     <div id="npBg"></div>
     <div class="np-only" id="npHead">
       <button class="icon-btn" id="npClose" aria-label="Wiedergabe-Ansicht schließen"><svg><use href="#i-down"/></svg></button>
-      <span id="npRoom"><small>Spielt in</small><b id="npRoomName"></b></span>
-      <button class="icon-btn" id="npRooms" aria-label="Räume gruppieren und Lautstärke je Raum"><svg><use href="#i-rooms"/></svg></button>
+      <button id="npRoom" aria-label="Räume wählen"><small>Spielt in</small><b id="npRoomName"></b></button>
+      <button class="icon-btn" id="npMore" aria-label="Weitere Aktionen für diesen Titel"><svg><use href="#i-more"/></svg></button>
     </div>
     <div class="np-only" id="npVideo"></div>
     <input type="range" id="seek" min="0" max="1" value="0" disabled aria-label="Position im Titel">
@@ -785,11 +823,15 @@
       <div class="meta" id="nowMeta">
         <div class="title" id="nowTitle">Nichts in Wiedergabe</div>
         <div class="sub" id="nowSub">&nbsp;</div>
+        <button class="np-only icon-btn" id="npStar" aria-pressed="false" aria-label="Als Favorit merken"><svg><use id="npStarIcon" href="#i-star-o"/></svg></button>
       </div>
       <div class="transport">
+        <button class="np-only mode" id="npShuffle" aria-pressed="false" aria-label="Zufällige Reihenfolge"><svg><use href="#i-shuffle"/></svg></button>
+        <button class="mini-only" id="miniGroup" aria-label="Räume wählen"><svg><use href="#i-speaker"/></svg><span class="badge" id="miniGroupCount" hidden></span></button>
         <button data-action="previous" aria-label="Vorheriger Titel"><svg><use href="#i-prev"/></svg></button>
         <button id="toggle" aria-label="Wiedergabe"><svg><use id="toggleIcon" href="#i-play"/></svg></button>
         <button data-action="next" aria-label="Nächster Titel"><svg><use href="#i-next"/></svg></button>
+        <button class="np-only mode" id="npRepeat" aria-pressed="false" aria-label="Wiederholen"><svg><use id="npRepeatIcon" href="#i-repeat"/></svg></button>
       </div>
     </div>
     <div class="volume" id="volumeRow">
@@ -800,12 +842,10 @@
         <svg><use href="#i-queue"/></svg>
       </button>
     </div>
-    <div class="np-only" id="npExtras">
-      <button id="npFav" aria-pressed="false"><svg><use id="npFavIcon" href="#i-star-o"/></svg>Favorit</button>
-      <button id="npRelated"><svg><use href="#i-radio"/></svg>Ähnliche</button>
-      <button id="npPlaylist"><svg><use href="#i-plus"/></svg>Playlist</button>
-      <button id="npLyrics"><svg><use href="#i-lyrics"/></svg>Songtext</button>
-      <button id="npQueue"><svg><use href="#i-queue"/></svg>Liste</button>
+    <div class="np-only" id="npBar">
+      <button class="icon-btn" id="npQueue" aria-label="Warteschlange"><svg><use href="#i-queue"/></svg></button>
+      <button id="npRoomsBtn" aria-label="Räume wählen und gruppieren"><svg><use href="#i-speaker"/></svg><span id="npRoomsLabel"></span></button>
+      <button class="icon-btn" id="npLyrics" aria-label="Songtext"><svg><use href="#i-lyrics"/></svg></button>
     </div>
   </div>
 </div>
@@ -845,10 +885,13 @@
     <button class="icon-btn" data-close aria-label="Schließen"><svg><use href="#i-close"/></svg></button>
   </header>
   <div class="body">
-    <div class="sub" style="white-space:normal;margin-bottom:6px">Angehakte Räume spielen gemeinsam.
-      Die Regler stellen jeden Raum einzeln ein.</div>
+    <div class="pick-top">
+      <span class="sub" id="pickHint">Angehakte Räume spielen gemeinsam.</span>
+      <button class="pill" id="pickAll">Alle Räume</button>
+    </div>
     <div id="rooms"></div>
   </div>
+  <div class="sheet-foot"><button class="pill primary" id="applyRooms" disabled>Übernehmen</button></div>
 </div>
 
 <div class="sheet" id="settingsSheet" role="dialog" aria-label="Einstellungen" hidden>
@@ -1255,12 +1298,13 @@ function collapsePlayer() {
   stopVideo();
 }
 
-// Runs fn once the full-screen player (and anything above it) has been left.
+// Runs fn once an open sheet and the full-screen player have been left - in one
+// history step, so two separate "back"s cannot race each other.
 function leavePlayer(fn) {
-  if (!$('player').classList.contains('expanded')) return fn();
-  const steps = here() === 'sheet' ? -2 : -1;
+  const steps = (here() === 'sheet' ? 1 : 0) + ($('player').classList.contains('expanded') ? 1 : 0);
+  if (!steps) return fn();
   window.addEventListener('popstate', () => setTimeout(fn, 0), {once: true});
-  history.go(steps);
+  history.go(-steps);
 }
 
 window.addEventListener('popstate', () => {
@@ -1274,6 +1318,19 @@ document.querySelectorAll('[data-close]').forEach((b) => { b.onclick = closeShee
 
 // ---- rooms -------------------------------------------------------------------
 
+let speakerList = [];
+
+// "Familienzimmer +1" on the player's room button, a count on the mini player's.
+function paintGroupButtons() {
+  const me = speakerList.find((s) => s.name === speaker());
+  const extra = me ? Math.max(0, me.group.length - 1) : 0;
+  $('npRoomsLabel').textContent = speaker() + (extra ? ` +${extra}` : '');
+  $('miniGroupCount').textContent = String(extra + 1);
+  $('miniGroupCount').hidden = !extra;
+  $('miniGroup').setAttribute('aria-label', extra
+    ? `${speaker()} und ${extra === 1 ? '1 weiterer Raum' : extra + ' weitere Räume'} – Räume wählen` : 'Räume wählen');
+}
+
 // Lets the Android app know which room its lock-screen controls belong to.
 function tellApp() {
   try { if (window.SonosytApp && speaker()) window.SonosytApp.setSpeaker(speaker()); } catch (e) {}
@@ -1284,6 +1341,7 @@ async function loadSpeakers(refresh) {
   try {
     list = await api('/api/speakers' + (refresh ? '?refresh=1' : ''));
   } catch (e) { toast(e.message, true); }
+  speakerList = list;
   const saved = speaker() || store('speaker');
   $('speaker').replaceChildren(...list.map((s) => {
     const o = el('option', '', s.group.length > 1 ? `${s.name} (+${s.group.length - 1})` : s.name);
@@ -1898,7 +1956,7 @@ function openMenu(t, row, playlistsOnly) {
       $('menuItems').hidden = true;
       $('plChooser').hidden = false;
     }),
-    menuItem('radio', 'Ähnliche Titel anzeigen', act(() => leavePlayer(() => showRelated(t)))),
+    menuItem('radio', 'Ähnliche Titel anzeigen', () => leavePlayer(() => showRelated(t))),
     menuItem('share', 'Link teilen', act(() => shareLink(t))),
     menuItem('open', 'In YouTube öffnen', act(() => {
       const a = el('a'); a.href = 'https://www.youtube.com/watch?v=' + t.id; a.target = '_blank';
@@ -2023,9 +2081,16 @@ function paint() {
   tintFrom(has ? s.video_id : null);
   const ours = !!(has && s.video_id);
   const fav = ours && isFavorite(s.video_id);
-  $('npFav').disabled = $('npRelated').disabled = $('npPlaylist').disabled = !ours;
-  $('npFav').setAttribute('aria-pressed', fav);
-  $('npFavIcon').setAttribute('href', fav ? '#i-star' : '#i-star-o');
+  $('npStar').hidden = !ours;
+  $('npStar').setAttribute('aria-pressed', fav);
+  $('npStar').setAttribute('aria-label', fav ? 'Aus den Favoriten entfernen' : 'Als Favorit merken');
+  $('npStarIcon').setAttribute('href', fav ? '#i-star' : '#i-star-o');
+  $('npMore').disabled = !ours;
+  $('npShuffle').setAttribute('aria-pressed', !!(s && s.shuffle));
+  $('npRepeat').setAttribute('aria-pressed', !!(s && s.repeat));
+  $('npRepeatIcon').setAttribute('href', s && s.repeat === 2 ? '#i-repeat-one' : '#i-repeat');
+  $('npRepeat').setAttribute('aria-label', s && s.repeat === 2 ? 'Titel wiederholen' : s && s.repeat ? 'Alle wiederholen' : 'Wiederholen');
+  paintGroupButtons();
   $('toggleIcon').setAttribute('href', isPlaying() ? '#i-pause' : '#i-play');
   $('toggle').setAttribute('aria-label', isPlaying() ? 'Pause' : 'Wiedergabe');
   const seekable = has && s.duration > 0 && !s.live;
@@ -2036,7 +2101,9 @@ function paint() {
     fill($('seek'));
     $('pos').textContent = has ? fmt(livePosition()) : ' ';
   }
-  $('dur').textContent = seekable ? fmt(s.duration) : (has && s.live ? 'LIVE' : ' ');
+  $('dur').textContent = seekable
+    ? (settings.remaining ? '-' + fmt(s.duration - livePosition()) : fmt(s.duration))
+    : (has && s.live ? 'LIVE' : ' ');
   paintOptions();
   if (!$('settingsSheet').hidden) paintSettings();
   if (!$('lyricsSheet').hidden && has && s.video_id && s.video_id !== lyricsFor) loadLyrics();
@@ -2234,12 +2301,14 @@ $('player').addEventListener('touchend', (e) => {
     $('npClose').onclick();
   }
 }, {passive: true});
-$('npRooms').onclick = () => $('openRooms').onclick();
+['npRoom', 'npRoomsBtn', 'miniGroup'].forEach((id) => { $(id).onclick = (e) => { e.stopPropagation(); openRoomPicker(); }; });
 $('npQueue').onclick = () => openQueue();
 $('npLyrics').onclick = () => openLyrics();
-$('npFav').onclick = async () => { buzz(); await toggleFavorite(nowTrack()); paint(); };
-$('npRelated').onclick = () => { const t = nowTrack(); leavePlayer(() => showRelated(t)); };
-$('npPlaylist').onclick = () => openMenu(nowTrack(), null, true);
+$('npStar').onclick = async (e) => { e.stopPropagation(); buzz(); await toggleFavorite(nowTrack()); paint(); };
+$('npMore').onclick = () => openMenu(nowTrack(), null);
+$('npShuffle').onclick = () => { buzz(); $('optShuffle').onclick(); };
+$('npRepeat').onclick = () => { buzz(); $('optRepeat').onclick(); };
+$('dur').onclick = () => { settings.remaining = !settings.remaining; store('settings', settings); paint(); };
 
 async function refreshStatus() {
   if (!speaker() || document.hidden) return;
@@ -2461,42 +2530,90 @@ document.querySelectorAll('#sleepChoices button').forEach((b) => {
 
 // ---- rooms sheet ----------------------------------------------------------------------------
 
+// The room picker: tick rooms, then "Übernehmen" applies all changes at once.
+let picker = {rooms: [], chosen: new Set(), busy: false};
+
 async function loadRooms() {
   let rooms = [];
   try { rooms = await api('/api/rooms?speaker=' + encodeURIComponent(speaker())); }
   catch (e) { return toast(e.message, true); }
-  $('rooms').replaceChildren(...rooms.map(roomRow));
+  picker = {rooms, chosen: new Set(rooms.filter((r) => r.grouped || r.selected).map((r) => r.name)), busy: false};
+  renderPicker();
+}
+
+function pickerChanges() {
+  const join = picker.rooms.filter((r) => !r.grouped && !r.selected && picker.chosen.has(r.name)).map((r) => r.name);
+  const leave = picker.rooms.filter((r) => r.grouped && !r.selected && !picker.chosen.has(r.name)).map((r) => r.name);
+  return {join, leave};
+}
+
+function renderPicker() {
+  $('rooms').replaceChildren(...picker.rooms.map(roomRow));
+  const {join, leave} = pickerChanges();
+  $('applyRooms').disabled = picker.busy || (!join.length && !leave.length);
+  $('applyRooms').textContent = picker.busy ? 'Wird übernommen …' : 'Übernehmen';
+  const others = picker.rooms.filter((r) => !r.selected);
+  $('pickAll').hidden = !others.length;
+  $('pickAll').textContent = others.every((r) => picker.chosen.has(r.name)) ? 'Nur dieser Raum' : 'Alle Räume';
+  $('pickHint').textContent = others.length ? `Spielt in ${speaker()} – angehakte Räume hören mit.` : 'Nur ein Raum gefunden.';
+}
+
+$('pickAll').onclick = () => {
+  const others = picker.rooms.filter((r) => !r.selected);
+  const all = others.every((r) => picker.chosen.has(r.name));
+  others.forEach((r) => (all ? picker.chosen.delete(r.name) : picker.chosen.add(r.name)));
+  buzz();
+  renderPicker();
+};
+
+$('applyRooms').onclick = async () => {
+  const {join, leave} = pickerChanges();
+  picker.busy = true;
+  renderPicker();
+  const failed = [];
+  for (const [room, on] of [...join.map((r) => [r, true]), ...leave.map((r) => [r, false])]) {
+    try { await api('/api/group', {speaker: speaker(), room, join: on}); }
+    catch (e) { failed.push(room); toast(e.message, true); }
+  }
+  // Sonos takes a moment to regroup: wait until it reports the new grouping (up to ~5 s).
+  for (let i = 0; i < 8; i++) {
+    let rooms;
+    try { rooms = await api('/api/rooms?speaker=' + encodeURIComponent(speaker())); } catch (e) { break; }
+    const done = rooms.every((r) => r.selected || failed.includes(r.name) || r.grouped === picker.chosen.has(r.name));
+    if (done) break;
+    await new Promise((resolve) => setTimeout(resolve, 600));
+  }
+  await loadSpeakers(true);
+  loadOverview();
+  if (!failed.length) {
+    const together = [...picker.chosen];
+    toast(together.length > 1 ? `Spielt gemeinsam: ${together.join(', ')}` : `Spielt nur in ${speaker()}`);
+    closeSheet();
+  } else {
+    loadRooms();
+  }
+};
+
+function openRoomPicker() {
+  $('rooms').replaceChildren();
+  $('applyRooms').disabled = true;
+  openSheet('roomSheet');
+  loadRooms();
 }
 
 function roomRow(room) {
-  const row = el('div', 'room-row' + (room.grouped ? ' on' : ''));
+  const chosen = picker.chosen.has(room.name);
+  const row = el('div', 'room-row' + (chosen ? ' on' : '') + (chosen !== (room.grouped || room.selected) ? ' changed' : ''));
   const head = el('button', 'head');
   const check = el('span', 'check'); check.append(icon('check'));
   head.append(check, el('span', '', room.name));
-  head.disabled = room.selected;
-  head.setAttribute('aria-pressed', room.grouped);
-  head.setAttribute('aria-label', room.selected ? `${room.name} (gewählter Raum)`
-    : `${room.name} ${room.grouped ? 'aus der Gruppe nehmen' : 'zur Gruppe hinzufügen'}`);
-  head.onclick = async () => {
-    const want = !room.grouped;
-    head.disabled = true;
+  head.disabled = room.selected || picker.busy;
+  head.setAttribute('aria-pressed', chosen);
+  head.setAttribute('aria-label', room.selected ? `${room.name} (spielt)` : `${room.name} ${chosen ? 'nicht mithören lassen' : 'mithören lassen'}`);
+  head.onclick = () => {
+    if (chosen) picker.chosen.delete(room.name); else picker.chosen.add(room.name);
     buzz();
-    row.classList.toggle('on', want);       // show the result at once ...
-    row.classList.add('pending');           // ... with a spinner until Sonos confirms it
-    let rooms = null;
-    try {
-      rooms = await api('/api/group', {speaker: speaker(), room: room.name, join: want});
-    } catch (e) { toast(e.message, true); }
-    // Sonos needs a moment until the new grouping is visible: look again a few times.
-    for (let i = 0; rooms && i < 8; i++) {
-      const now = rooms.find((r) => r.name === room.name);
-      if (now && now.grouped === want) break;
-      await new Promise((done) => setTimeout(done, 600));
-      try { rooms = await api('/api/rooms?speaker=' + encodeURIComponent(speaker())); } catch (e) {}
-    }
-    if (rooms && !$('roomSheet').hidden) $('rooms').replaceChildren(...rooms.map(roomRow));
-    else if (!rooms) loadRooms();
-    loadSpeakers(false);
+    renderPicker();
   };
   const vol = el('div', 'vol');
   const slider = el('input'); slider.type = 'range'; slider.min = 0; slider.max = 100;
@@ -2557,7 +2674,7 @@ function roomRow(room) {
   return row;
 }
 
-$('openRooms').onclick = () => { $('rooms').replaceChildren(); openSheet('roomSheet'); loadRooms(); };
+$('openRooms').onclick = openRoomPicker;
 
 // ---- settings sheet ---------------------------------------------------------------------------
 
