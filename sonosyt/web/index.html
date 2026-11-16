@@ -264,7 +264,7 @@
 
   /* --- full-screen player ---------------------------------------------------------- */
   .np-only { display: none; }
-  #npBg { position: absolute; inset: -90px; z-index: -1; display: none; background-size: cover;
+  #npBg { position: fixed; inset: -90px; pointer-events: none; z-index: -1; display: none; background-size: cover;
           background-position: center; filter: blur(60px) saturate(1.5); opacity: .42; }
   #nowMeta, #art, #noart { cursor: pointer; }
   .player.expanded { top: 0; z-index: 15; border-top: 0; overflow: hidden; background: var(--bg);
@@ -276,18 +276,6 @@
                      --line: color-mix(in srgb, var(--text) 22%, transparent); }
   .player.expanded .inner { min-height: 100%; max-width: 520px; display: flex; flex-direction: column; }
   .player.expanded { overflow-y: auto; }
-  @media (max-height: 700px) {   /* short phones: tighter, so everything fits without scrolling */
-    .player.expanded #nowMeta { margin: 14px 0 2px; }
-    .player.expanded #nowTitle { font-size: 1.1875rem; }
-    .player.expanded .transport { margin: 4px 0; }
-    .player.expanded .transport #toggle { width: 66px; height: 66px; }
-    .player.expanded #npExtras { margin-top: 6px; }
-    .player.expanded #npHead { height: 40px; }
-  }
-  @media (orientation: landscape) and (max-height: 520px) {
-    .player.expanded #art, .player.expanded #noart, .player.expanded.video #npVideo {
-      max-width: 52vh; align-self: center; }
-  }
   .player.expanded .np-only { display: flex; }
   .player.expanded .now { display: contents; }
   .player.expanded #npHead { order: 0; align-items: center; gap: 8px; height: 48px; margin: 0 -10px; }
@@ -315,8 +303,21 @@
   #npExtras button:active { background: var(--soft); }
   #npExtras button[aria-pressed=true] { color: var(--accent); }
   #npExtras button:disabled { opacity: .35; }
+  @media (max-height: 700px) {   /* short phones: tighter, so everything fits without scrolling */
+    .player.expanded #nowMeta { margin: 14px 0 2px; }
+    .player.expanded #nowTitle { font-size: 1.1875rem; }
+    .player.expanded .transport { margin: 4px 0; }
+    .player.expanded .transport #toggle { width: 66px; height: 66px; }
+    .player.expanded #npExtras { margin-top: 6px; }
+    .player.expanded #npHead { height: 40px; }
+  }
+  @media (orientation: landscape) and (max-height: 520px) {
+    .player.expanded #art, .player.expanded #noart, .player.expanded.video #npVideo {
+      max-width: 52vh; align-self: center; }
+  }
   .player-open { overflow: hidden; }
-  .player-open #toast { bottom: calc(24px + env(safe-area-inset-bottom)); }
+  /* In the full-screen player the controls sit at the bottom: show messages up top. */
+  .player-open #toast { bottom: auto; top: calc(56px + env(safe-area-inset-top)); }
   .room-row.pending .check { border-color: var(--accent); background: none; }
   .room-row.pending .check svg { visibility: hidden; }
   .room-row.pending .check::after { content: ''; width: 12px; height: 12px; border-radius: 50%;
