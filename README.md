@@ -77,6 +77,11 @@ Danach:
   und den Sleep-Timer.
 - **Räume** (Symbol oben rechts): Räume zusammenschalten und jeden einzeln in der Lautstärke
   regeln.
+- **Räume** (untere Leiste): jeder Raum als Karte mit dem, was läuft, Play/Pause und Lautstärke;
+  ein Tipp auf den Namen wählt ihn aus, „Alle pausieren" stoppt überall.
+- **Voreinstellungen** (oben auf „Start"): Musik, Räume und Lautstärke zusammen speichern und mit
+  einem Tipp starten – der erste Raum spielt, die anderen werden dazugeschaltet. Lange drücken
+  bearbeitet eine Voreinstellung.
 - **Sonos-Favoriten:** Radiosender und Playlists aus der Sonos-App erscheinen auf „Start" und
   starten mit einem Tipp.
 - **Songtexte** (Knopf „Songtext" in der großen Wiedergabe-Ansicht) kommen von

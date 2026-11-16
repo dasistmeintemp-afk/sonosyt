@@ -413,3 +413,17 @@ def test_crossfade_switch_and_status(setup):
     kitchen.cross_fade = False
     ctl.control("Wohnzimmer", "crossfade", 1)
     assert kitchen.cross_fade is True and ctl.status("Küche")["crossfade"] is True
+
+
+def test_overview_lists_each_group_once_with_what_it_plays(setup, monkeypatch):
+    ctl, kitchen, living = setup
+    bath = FakeSpeaker("Bad", "10.0.0.7")
+    monkeypatch.setattr(ctl, "_discover", lambda: [living, kitchen, bath])
+    ctl.devices(refresh=True)
+    bath.get_current_transport_info = lambda: {"current_transport_state": "PAUSED_PLAYBACK"}
+    overview = ctl.overview()
+    assert [(g["name"], g["members"], g["state"]) for g in overview] == [
+        ("Bad", ["Bad"], "PAUSED_PLAYBACK"),
+        ("Küche", ["Küche", "Wohnzimmer"], "PLAYING"),  # Wohnzimmer plays in Küche's group
+    ]
+    assert overview[1]["title"] == "T" and overview[1]["volume"] == 33 and overview[1]["video_id"] == "aaaaaaaaaaa"

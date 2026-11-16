@@ -94,3 +94,21 @@ def test_soft_start():
     assert start_volume(alarm) == 3 and start_volume({**alarm, "fade": False}) == 25
     levels = ramp(3, 25)
     assert levels[-1] == 25 and levels == sorted(levels) and ramp(25, 25) == []
+
+
+def test_sources_and_presets():
+    from sonosyt.domain.preset import normalize_preset
+    from sonosyt.domain.source import describe, normalize_source
+
+    assert normalize_source({"type": "playlist", "name": "Chill"}) == {"type": "playlist", "name": "Chill"}
+    assert describe(normalize_source({"type": "sonosfav", "index": 2, "title": "Radio"})) == "Radio"
+    for bad in (None, {}, {"type": "playlist"}, {"type": "spotify"}):
+        with pytest.raises(ValueError):
+            normalize_source(bad)
+    preset = normalize_preset({"name": "  Abend  essen ", "rooms": ["Küche", "Bad", "Küche", ""],
+                               "source": {"type": "favorites"}, "volume": "15"})
+    assert preset["name"] == "Abend essen" and preset["rooms"] == ["Küche", "Bad"] and preset["volume"] == 15
+    assert normalize_preset({**preset, "volume": None})["volume"] is None  # keep the room's volume
+    for change in ({"name": ""}, {"rooms": []}, {"source": {"type": "?"}}, {"id": "a/b"}):
+        with pytest.raises(ValueError):
+            normalize_preset({**preset, **change})

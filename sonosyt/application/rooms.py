@@ -14,6 +14,21 @@ class RoomService:
     def list(self, refresh: bool = False) -> list[dict]:
         return self.speakers.speakers(refresh)
 
+    def overview(self) -> list[dict]:
+        """Every playing group with what it plays and its volume, for the rooms tab."""
+        return self.speakers.overview()
+
+    def pause_all(self) -> dict:
+        paused = []
+        for group in self.speakers.overview():
+            if group.get("state") in ("PLAYING", "TRANSITIONING"):
+                try:
+                    self.speakers.control(group["name"], "pause")
+                    paused.append(group["name"])
+                except Exception:  # noqa: BLE001 - a room that is busy: the others still pause
+                    continue
+        return {"paused": paused}
+
     def control(self, speaker: str, action: str | None = None, value=None, to=None,
                 volume=None, single: bool = False) -> None:
         if volume is not None:

@@ -148,6 +148,36 @@ class SonosController:
             out.append({"name": dev.player_name, "ip": dev.ip_address, "group": members})
         return out
 
+    def overview(self) -> list[dict]:
+        """One entry per group (named after its coordinator), with what it plays."""
+        groups, seen = [], set()
+        for dev in self.devices():
+            coord = self._coordinator(dev)
+            if coord.ip_address in seen:
+                continue
+            seen.add(coord.ip_address)
+            try:
+                members = sorted(m.player_name for m in coord.group.members if m.is_visible)
+            except Exception:  # noqa: BLE001
+                members = [coord.player_name]
+            try:
+                status = self.status(coord.player_name)
+            except Exception as exc:  # noqa: BLE001 - unreachable room: still listed
+                log.warning("overview: %s: %s", coord.player_name, exc)
+                status = {"state": "", "title": "", "volume": None}
+            groups.append({
+                "name": coord.player_name,
+                "members": members or [coord.player_name],
+                "state": status.get("state", ""),
+                "title": status.get("title", ""),
+                "artist": status.get("artist", ""),
+                "album_art": status.get("album_art", ""),
+                "video_id": status.get("video_id"),
+                "volume": status.get("volume"),
+                "muted": bool(status.get("muted")),
+            })
+        return sorted(groups, key=lambda g: g["name"].lower())
+
     def get(self, name_or_ip: str):
         """Find a speaker by room name (case-insensitive) or IP address."""
         wanted = (name_or_ip or "").strip().lower()

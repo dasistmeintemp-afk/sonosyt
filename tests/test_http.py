@@ -69,6 +69,12 @@ class FakeSonos:
     def group(self, speaker, room, join):
         self.controls.append((speaker, "group", room, join))
 
+    def overview(self):
+        return [{"name": "Küche", "members": ["Küche"], "state": self.now.get("state", ""), "title": "Song",
+                 "artist": "Chan", "album_art": "", "video_id": VID, "volume": 20, "muted": False},
+                {"name": "Bad", "members": ["Bad"], "state": "STOPPED", "title": "", "artist": "",
+                 "album_art": "", "video_id": None, "volume": 5, "muted": False}]
+
 
 class FakeCatalog:
     """Stands in for YouTube; tests replace the functions as needed."""
@@ -579,3 +585,38 @@ def test_alarms_fire_once_per_minute_in_their_time_zone(srv):
     assert json.loads(call(base + "/api/alarms", {"op": "test", "id": saved[0]["id"]})[2])["playing"] == "Morgen"
     remaining = json.loads(call(base + "/api/alarms", {"op": "delete", "id": saved[0]["id"]})[2])
     assert [a["time"] for a in remaining] == ["06:00"]
+
+
+def test_rooms_overview_and_pause_all(srv):
+    base, app, sonos = srv
+    overview = json.loads(call(base + "/api/system")[2])
+    assert [g["name"] for g in overview] == ["Küche", "Bad"]
+    assert json.loads(call(base + "/api/pauseall", {})[2]) == {"paused": ["Küche"]}  # only what plays
+    assert sonos.controls[-1] == ("Küche", "pause", None)
+
+
+def test_presets_group_rooms_set_volume_and_play(srv):
+    base, app, sonos = srv
+    call(base + "/api/search?q=beatles")
+    call(base + "/api/playlist", {"name": "Chill", "id": VID})
+    sonos.speakers = lambda refresh=False: [{"name": "Küche", "ip": "10.0.0.5", "group": ["Küche"]}]
+    sonos.rooms = lambda speaker: [{"name": "Küche", "grouped": True}, {"name": "Bad", "grouped": False}]
+    real_get = sonos.get
+    sonos.get = lambda name: real_get("Küche") if name in ("Küche", "Bad") else real_get(name)
+    preset = {"name": "Abendessen", "rooms": ["Küche", "Bad"], "source": {"type": "playlist", "name": "Chill"},
+              "volume": 15}
+    saved = json.loads(call(base + "/api/presets", {"op": "save", "preset": preset})[2])
+    assert [p["name"] for p in saved] == ["Abendessen"]
+    assert json.loads(call(base + "/api/presets")[2])[0]["rooms"] == ["Küche", "Bad"]
+    assert call(base + "/api/presets", {"op": "save", "preset": {**preset, "rooms": ["Garage"]}})[0] == 404
+
+    result = json.loads(call(base + "/api/presets", {"op": "run", "id": saved[0]["id"]})[2])
+    assert result == {"playing": "Chill", "speaker": "Küche"}
+    assert ("Küche", "group", "Bad", True) in sonos.controls  # Bad joins Küche
+    assert ("Küche", "volume", 15) in sonos.controls
+    assert sonos.enqueued[-1][0] == "Küche" and sonos.enqueued[-1][2] == "now"
+
+    from sonosyt.adapters.json_library import Library
+    assert Library(app.repo.path).presets()[0]["name"] == "Abendessen"  # survives a restart
+    assert json.loads(call(base + "/api/presets", {"op": "delete", "id": saved[0]["id"]})[2]) == []
+    assert call(base + "/api/presets", {"op": "run", "id": saved[0]["id"]})[0] == 400

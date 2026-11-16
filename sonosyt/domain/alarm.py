@@ -7,6 +7,8 @@ import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from .source import normalize_source
+
 DAY_COUNT = 7  # 0 = Monday ... 6 = Sunday
 
 
@@ -23,19 +25,7 @@ def normalize_alarm(data: dict) -> dict:
     speaker = str(data.get("speaker") or "").strip()
     if not speaker:
         raise ValueError("Raum fehlt.")
-    source = data.get("source") or {}
-    kind = source.get("type")
-    if kind == "playlist":
-        clean_source = {"type": kind, "name": str(source.get("name") or "")[:60]}
-        if not clean_source["name"]:
-            raise ValueError("Playlist fehlt.")
-    elif kind == "favorites":
-        clean_source = {"type": kind}
-    elif kind == "sonosfav":
-        clean_source = {"type": kind, "index": int(source.get("index")),
-                        "title": str(source.get("title") or "")[:120]}
-    else:
-        raise ValueError("Was soll der Wecker spielen?")
+    clean_source = normalize_source(data.get("source"))
     zone = str(data.get("tz") or "UTC")
     try:
         ZoneInfo(zone)

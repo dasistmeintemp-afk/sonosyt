@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import logging
-import random
 import threading
 import time
 from datetime import datetime, timezone
 
 from ..domain.alarm import occurrence, ramp, start_volume
-from ..domain.errors import MediaError
 from .playback import PlaybackService
 from .ports import LibraryRepository, SpeakerSystem
 from .rooms import RoomService
+from .sources import SourcePlayer
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +22,8 @@ def _in_background(fn, name: str) -> None:
 
 class AlarmService:
     def __init__(self, library: LibraryRepository, speakers: SpeakerSystem, playback: PlaybackService,
-                 rooms: RoomService, *, sleep=time.sleep, spawn=_in_background):
+                 rooms: RoomService, sources: SourcePlayer, *, sleep=time.sleep, spawn=_in_background):
+        self.sources = sources
         self.library = library
         self.speakers = speakers
         self.playback = playback
@@ -71,23 +71,7 @@ class AlarmService:
         speaker, source = alarm["speaker"], alarm["source"]
         first = start_volume(alarm)
         self.speakers.set_volume(speaker, first)
-        if source["type"] == "sonosfav":
-            what = self.speakers.play_favorite(speaker, source["index"])
-        else:
-            snapshot = self.library.snapshot()
-            if source["type"] == "playlist":
-                tracks = next((p["tracks"] for p in snapshot["playlists"] if p["name"] == source["name"]), None)
-                if tracks is None:
-                    raise MediaError(f"Die Playlist „{source['name']}“ gibt es nicht mehr.")
-                what = source["name"]
-            else:
-                tracks, what = snapshot["favorites"], "Favoriten"
-            ids = [t["id"] for t in tracks if not t.get("live")]
-            if not ids:
-                raise MediaError(f"„{what}“ ist leer.")
-            if alarm["shuffle"]:
-                random.shuffle(ids)
-            self.playback.play(speaker, ids[:100], None, "now")
+        what = self.sources.play(speaker, source, alarm["shuffle"])
         levels = ramp(first, alarm["volume"]) if alarm["fade"] else []
         if levels:
             def louder():

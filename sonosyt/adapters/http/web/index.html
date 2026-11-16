@@ -222,7 +222,7 @@
   .player.idle:not(.expanded) { display: none; }
   .player .inner { position: relative; padding: 8px 6px 8px 8px; }
   .player:not(.expanded) { --muted: color-mix(in srgb, var(--on-tint) 70%, transparent); }
-  .player:not(.expanded) #seek, .player:not(.expanded) .times, .player:not(.expanded) .volume,
+  .player:not(.expanded) #seek, .player:not(.expanded) .times,
   .player:not(.expanded) [data-action=previous] { display: none; }
   #miniBar { position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; border-radius: 1px;
              background: color-mix(in srgb, var(--on-tint) 22%, transparent); overflow: hidden; }
@@ -507,6 +507,76 @@
   .player.nudge-right .now, .player.expanded.nudge-right #art { transform: translateX(24px); opacity: .6; }
   .player.expanded .now { transform: none !important; opacity: 1 !important; }
 
+  /* ===== rooms tab ========================================================================= */
+  .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .room-card { background: var(--card); border-radius: 18px; padding: 14px 14px 10px; margin-top: 12px;
+               border: 1.5px solid transparent; transition: border-color .2s; }
+  .room-card.selected { border-color: color-mix(in srgb, var(--accent) 70%, transparent); }
+  .room-card .rc-head { display: flex; align-items: center; gap: 8px; }
+  .room-card .rc-name { flex: 1; min-width: 0; text-align: left; font-size: 1.125rem; font-weight: 750; }
+  .room-card .rc-name small { display: block; font-size: .8125rem; font-weight: 500; color: var(--muted);
+                              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .room-card .rc-now { display: flex; align-items: center; gap: 12px; margin-top: 10px; width: 100%; text-align: left; }
+  .room-card .rc-art { flex: none; width: 56px; height: 56px; border-radius: 10px; overflow: hidden;
+                       background: var(--soft); display: grid; place-items: center; color: var(--muted); }
+  .room-card .rc-art img { width: 100%; height: 100%; object-fit: cover; }
+  .room-card .rc-meta { flex: 1; min-width: 0; }
+  .room-card .rc-meta .title { -webkit-line-clamp: 1; }
+  .room-card .rc-play { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+                        background: var(--text); color: var(--bg); }
+  .room-card .rc-play svg { width: 26px; height: 26px; }
+  .room-card .rc-play:disabled { background: var(--soft); color: var(--muted); }
+  .room-card .rc-vol { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .room-card .rc-vol svg { flex: none; width: 20px; height: 20px; color: var(--muted); }
+  .room-card .rc-vol output { width: 2.2em; text-align: right; color: var(--muted); font-size: .875rem;
+                              font-variant-numeric: tabular-nums; }
+  .room-card.offline { opacity: .55; }
+
+  /* ===== presets ============================================================================= */
+  .preset { flex: none; width: 168px; min-height: 92px; border-radius: 16px; padding: 12px 14px; text-align: left;
+            display: flex; flex-direction: column; justify-content: space-between; gap: 6px; scroll-snap-align: start;
+            scroll-margin-left: 16px; background: linear-gradient(140deg,
+              color-mix(in srgb, var(--accent) 34%, var(--card)), var(--card) 75%); }
+  .preset b { font-size: 1rem; font-weight: 750; line-height: 1.2; }
+  .preset small { color: var(--muted); font-size: .75rem; line-height: 1.3; display: -webkit-box;
+                  -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .preset.add { background: var(--soft); align-items: center; justify-content: center; color: var(--muted);
+                font-weight: 650; font-size: .875rem; }
+  .preset.add svg { width: 28px; height: 28px; }
+  .preset.busy { opacity: .6; }
+  .preset:active { transform: scale(.97); }
+  .preset { transition: transform .12s; }
+  .preset-intro { display: block; width: 100%; text-align: left; background: var(--card); border-radius: 16px;
+                  padding: 14px 16px; margin-top: 4px; }
+  .preset-intro b { display: block; font-weight: 650; }
+  .preset-intro small { color: var(--muted); font-size: .875rem; }
+  .room-checks { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 6px; }
+  .text-input { display: block; width: 100%; height: 48px; border-radius: 12px; padding: 0 14px; border: 1.5px solid transparent;
+                background: var(--soft); outline: none; font-size: 1rem; margin-top: 4px; }
+  .text-input:focus { border-color: var(--accent); }
+
+  /* ===== section links, search history ======================================================= */
+  .label-link { display: inline-flex; align-items: center; gap: 2px; font: inherit; color: inherit; }
+  .label-link svg { width: 24px; height: 24px; color: var(--muted); transform: rotate(-90deg); }
+  .label .text-btn { font-size: .875rem; font-weight: 600; color: var(--muted); padding: 6px 2px; }
+  .recent-row { display: flex; align-items: center; gap: 14px; }
+  .recent-row .go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; min-height: 52px; text-align: left; }
+  .recent-row .go svg { flex: none; width: 22px; height: 22px; color: var(--muted); }
+  .recent-row .go span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ===== mini player volume ==================================================================== */
+  :root { --mini-h: 104px; }
+  .player:not(.expanded) .volume { display: flex; margin-top: 6px; padding: 0 2px 4px 2px; height: 30px; }
+  .player:not(.expanded) .volume .queue-btn { display: none; }
+  .player:not(.expanded) #muteBtn { width: 34px; height: 34px; margin: 0 -4px 0 -6px; }
+  .player:not(.expanded) .volume svg { width: 20px; height: 20px; }
+  .player:not(.expanded) input[type=range]::-webkit-slider-runnable-track {
+    background: linear-gradient(to right, var(--on-tint) var(--fill),
+                color-mix(in srgb, var(--on-tint) 22%, transparent) var(--fill)); }
+  .player:not(.expanded) input[type=range]::-webkit-slider-thumb { background: var(--on-tint); }
+  .player:not(.expanded) #volNum { color: var(--muted); }
+  .player:not(.expanded) #miniBar { display: none; }
+
   /* ===== toast + volume overlay ============================================================= */
   #toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
            bottom: calc(var(--nav-h) + var(--mini-h) + 22px + env(safe-area-inset-bottom));
@@ -560,6 +630,7 @@
   <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></symbol>
   <symbol id="i-lyrics" viewBox="0 0 24 24"><path d="M4 6h12v2H4zm0 4h12v2H4zm0 4h8v2H4zm14-8v8.18A3 3 0 1 0 20 17V8h2V6h-4z"/></symbol>
   <symbol id="i-alarm" viewBox="0 0 24 24"><path d="m22 5.72-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72zM7.88 3.39 6.6 1.86 2 5.71l1.29 1.53 4.59-3.85zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4a9 9 0 1 0 .01 18.01A9 9 0 0 0 12 4zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></symbol>
+  <symbol id="i-add" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></symbol>
   <symbol id="i-note" viewBox="0 0 24 24"><path d="M12 3v10.600a4 4 0 1 0 2 3.400V7h4V3z"/></symbol>
 </svg>
 
@@ -597,9 +668,13 @@
 
   <section id="home" class="view">
     <h1 class="page-title" id="greeting">Hallo</h1>
+    <div id="presetBox">
+      <div class="label"><span>Voreinstellungen<small>Musik, Räume und Lautstärke mit einem Tipp</small></span></div>
+      <div class="rail" id="presets"></div>
+    </div>
     <ul class="tracklist quick" id="quick"></ul>
     <div id="histBox" hidden>
-      <div class="label">Zuletzt gespielt</div>
+      <div class="label"><button class="label-link" data-lib-link="history">Zuletzt gespielt<svg><use href="#i-chev"/></svg></button></div>
       <ul class="tracklist rail" id="history"></ul>
     </div>
     <div id="forYouBox" hidden>
@@ -607,7 +682,7 @@
       <ul class="tracklist rail" id="forYou"></ul>
     </div>
     <div id="favBox" hidden>
-      <div class="label">Favoriten</div>
+      <div class="label"><button class="label-link" data-lib-link="favorites">Favoriten<svg><use href="#i-chev"/></svg></button></div>
       <ul class="tracklist rail" id="favorites"></ul>
     </div>
     <div id="sfBox" hidden>
@@ -615,7 +690,7 @@
       <div class="rail" id="sonosFavs"></div>
     </div>
     <div id="plBox" hidden>
-      <div class="label">Deine Playlists</div>
+      <div class="label"><button class="label-link" data-lib-link="playlists">Deine Playlists<svg><use href="#i-chev"/></svg></button></div>
       <div class="rail" id="playlists"></div>
     </div>
     <div class="hint" id="welcome">
@@ -627,10 +702,19 @@
     </div>
   </section>
 
+  <section id="roomsTab" class="view" hidden>
+    <div class="title-row">
+      <h1 class="page-title">Räume</h1>
+      <button class="pill" id="pauseAll"><svg><use href="#i-pause"/></svg>Alle pausieren</button>
+    </div>
+    <div id="roomCards"></div>
+    <div class="hint" id="roomsEmpty" hidden>Keine Räume gefunden.</div>
+  </section>
+
   <section id="searchHome" class="view" hidden>
     <div id="recentBox" hidden>
-      <div class="label">Zuletzt gesucht</div>
-      <div class="chips" id="recent"></div>
+      <div class="label">Zuletzt gesucht<button class="text-btn" id="clearRecent">Löschen</button></div>
+      <div id="recent"></div>
     </div>
     <div class="hint" id="searchHint">
       <div class="empty-icon"><svg><use href="#i-search"/></svg></div>
@@ -678,6 +762,7 @@
 
 <nav class="tabs" id="tabs" aria-label="Bereiche">
   <button data-tab="home" aria-current="page"><svg><use href="#i-home"/></svg><span>Start</span></button>
+  <button data-tab="rooms"><svg><use href="#i-rooms"/></svg><span>Räume</span></button>
   <button data-tab="search"><svg><use href="#i-search"/></svg><span>Suchen</span></button>
   <button data-tab="library"><svg><use href="#i-library"/></svg><span>Bibliothek</span></button>
 </nav>
@@ -866,6 +951,31 @@
       <button class="pill primary" id="alSave">Speichern</button>
       <button class="pill" id="alTest">Jetzt testen</button>
       <button class="pill" id="alDelete">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="presetSheet" role="dialog" aria-label="Voreinstellung" hidden>
+  <header>
+    <h2 id="presetTitle">Voreinstellung</h2>
+    <button class="icon-btn" data-close aria-label="Schließen"><svg><use href="#i-close"/></svg></button>
+  </header>
+  <div class="body">
+    <input class="text-input" id="prName" maxlength="40" placeholder="Name, z. B. Abendessen" aria-label="Name">
+    <div class="set"><span>Musik</span><select id="prSource" aria-label="Musik"></select></div>
+    <div class="label" style="margin-top:6px">Räume</div>
+    <div class="room-checks" id="prRooms"></div>
+    <div class="days-hint">Der erste gewählte Raum spielt, die anderen kommen dazu.</div>
+    <div class="set"><span>Lautstärke festlegen<small>Sonst bleibt sie, wie sie ist</small></span>
+      <button class="switch" id="prSetVol" role="switch" aria-label="Lautstärke festlegen"></button></div>
+    <div class="set" id="prVolRow"><span>Lautstärke</span>
+      <input type="range" id="prVol" min="1" max="60" value="15" aria-label="Lautstärke"><output id="prVolNum">15</output></div>
+    <div class="set"><span>Zufällige Reihenfolge</span>
+      <button class="switch" id="prShuffle" role="switch" aria-label="Zufällige Reihenfolge"></button></div>
+    <div class="editor-actions">
+      <button class="pill primary" id="prSave">Speichern</button>
+      <button class="pill" id="prRun">Jetzt starten</button>
+      <button class="pill" id="prDelete">Löschen</button>
     </div>
   </div>
 </div>
@@ -1070,6 +1180,7 @@ let currentTab = 'home';
 function showTabContent(show) {
   $('home').hidden = !show || currentTab !== 'home';
   $('searchHome').hidden = !show || currentTab !== 'search';
+  $('roomsTab').hidden = !show || currentTab !== 'rooms';
   $('library').hidden = !show || currentTab !== 'library';
 }
 
@@ -1089,6 +1200,7 @@ function selectTab(name) {
   if (here() === 'results') history.back();   // popstate then shows the tab
   else showHome();
   if (!again || window.scrollY === 0) window.scrollTo(0, 0); else window.scrollTo({top: 0, behavior: 'smooth'});
+  if (name === 'rooms') loadOverview();
   if (name === 'search') {
     setTimeout(() => {   // only if nothing has happened in the meantime (e.g. a search already ran)
       if (currentTab === 'search' && view.kind === 'home' && !$('q').value) $('q').focus();
@@ -1101,7 +1213,7 @@ document.querySelectorAll('#tabs [data-tab]').forEach((b) => { b.onclick = () =>
 // ---- navigation: the back button closes sheets and leaves result lists --------
 
 const here = () => (history.state && history.state.kind) || 'home';
-const SHEETS = ['sheet', 'roomSheet', 'menuSheet', 'settingsSheet', 'lyricsSheet', 'alarmSheet'];
+const SHEETS = ['sheet', 'roomSheet', 'menuSheet', 'settingsSheet', 'lyricsSheet', 'alarmSheet', 'presetSheet'];
 
 function hideSheets() {
   SHEETS.forEach((id) => { $(id).hidden = true; });
@@ -1343,10 +1455,18 @@ function renderHome() {
   $('recentBox').hidden = !recent.length;
   $('searchHint').hidden = recent.length > 0;
   $('recent').replaceChildren(...recent.map((term) => {
-    const b = el('button', 'pill', term);
-    b.onclick = () => { $('q').value = term; search(); };
-    return b;
+    const row = el('div', 'recent-row');
+    const go = el('button', 'go');
+    go.append(icon('history'), el('span', '', term));
+    go.onclick = () => { $('q').value = term; search(); };
+    const remove = el('button', 'icon-btn');
+    remove.setAttribute('aria-label', `„${term}“ aus dem Suchverlauf entfernen`);
+    remove.append(icon('close'));
+    remove.onclick = () => { store('recent', (store('recent') || []).filter((t) => t !== term)); renderHome(); };
+    row.append(go, remove);
+    return row;
   }));
+  renderPresets();
   renderLibrary();
   markCurrent();
 }
@@ -2538,14 +2658,7 @@ function editAlarm(alarm) {
   $('alRoom').replaceChildren(...[...$('speaker').options].map((o) => option(o.value, o.value)));
   if (![...$('alRoom').options].some((o) => o.value === editing.speaker)) $('alRoom').append(option(editing.speaker, editing.speaker));
   $('alRoom').value = editing.speaker;
-  const sources = [option('favorites', 'Favoriten')];
-  library.playlists.forEach((p) => sources.push(option('playlist:' + p.name, 'Playlist: ' + p.name)));
-  sonosFavs.forEach((f) => sources.push(option('sonosfav:' + f.index, 'Sonos: ' + f.title)));
-  $('alSource').replaceChildren(...sources);
-  const src = editing.source;
-  const current = src.type === 'playlist' ? 'playlist:' + src.name : src.type === 'sonosfav' ? 'sonosfav:' + src.index : 'favorites';
-  if (![...$('alSource').options].some((o) => o.value === current)) $('alSource').append(option(current, sourceText(src)));
-  $('alSource').value = current;
+  fillSourceOptions($('alSource'), editing.source);
   $('alVol').value = editing.volume; $('alVolNum').textContent = editing.volume; fill($('alVol'));
   $('alDelete').hidden = $('alTest').hidden = !alarm;
   paintAlarmEditor();
@@ -2573,12 +2686,7 @@ $('alShuffle').onclick = () => { editing.shuffle = !editing.shuffle; paintAlarmE
 $('alVol').oninput = () => { $('alVolNum').textContent = $('alVol').value; fill($('alVol')); };
 
 function alarmFromEditor(enable) {
-  const [type, ...rest] = $('alSource').value.split(':');
-  const value = rest.join(':');
-  const source = type === 'playlist' ? {type, name: value}
-    : type === 'sonosfav' ? {type, index: Number(value),
-                             title: (sonosFavs.find((f) => f.index === Number(value)) || editing.source).title}
-    : {type: 'favorites'};
+  const source = sourceFromSelect($('alSource'), editing.source);
   return {...editing, time: $('alTime').value, speaker: $('alRoom').value, volume: Number($('alVol').value),
           source, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
           enabled: enable ? true : editing.enabled !== false};
@@ -2693,6 +2801,234 @@ async function checkAppUpdate() {
 }
 
 $('welcomeSearch').onclick = () => selectTab('search');
+$('clearRecent').onclick = () => { store('recent', []); renderHome(); toast('Suchverlauf gelöscht'); };
+document.querySelectorAll('[data-lib-link]').forEach((b) => {
+  b.onclick = () => { libFilter = b.dataset.libLink; store('libFilter', libFilter); selectTab('library'); };
+});
+
+// ---- rooms tab ---------------------------------------------------------------------------
+
+let overview = [];
+async function loadOverview() {
+  try { overview = await api('/api/system'); } catch (e) { return; }
+  renderOverview();
+}
+
+function roomCard(g) {
+  const card = el('div', 'room-card' + (g.name === speaker() ? ' selected' : '') + (g.volume == null ? ' offline' : ''));
+  const playing = g.state === 'PLAYING' || g.state === 'TRANSITIONING';
+  const head = el('div', 'rc-head');
+  const name = el('button', 'rc-name', g.name);
+  if (g.members.length > 1) name.append(el('small', '', 'mit ' + g.members.filter((m) => m !== g.name).join(', ')));
+  name.onclick = () => chooseRoom(g.name);
+  const more = el('button', 'icon-btn');
+  more.setAttribute('aria-label', `Räume und Klang für ${g.name}`);
+  more.append(icon('tune'));
+  more.onclick = () => { chooseRoom(g.name, true); $('openRooms').onclick(); };
+  head.append(name, more);
+
+  const now = el('button', 'rc-now');
+  const art = el('div', 'rc-art');
+  const cover = g.video_id ? thumbUrl(g.video_id) : g.album_art;
+  if (cover) { const img = el('img'); img.src = cover; img.alt = ''; img.onerror = () => img.remove(); art.append(img); }
+  else art.append(icon('note'));
+  const meta = el('div', 'rc-meta');
+  meta.append(el('div', 'title', g.title || 'Nichts läuft'),
+              el('div', 'sub', g.title ? (g.artist || '') : (g.volume == null ? 'Nicht erreichbar' : 'Bereit')));
+  now.append(art, meta);
+  now.onclick = () => { chooseRoom(g.name); if (g.title) expandPlayer(); };
+  const toggle = el('button', 'rc-play');
+  toggle.setAttribute('aria-label', playing ? `${g.name} pausieren` : `${g.name} abspielen`);
+  toggle.append(icon(playing ? 'pause' : 'play'));
+  toggle.disabled = !g.title;
+  toggle.onclick = async () => {
+    buzz();
+    g.state = playing ? 'PAUSED_PLAYBACK' : 'PLAYING';
+    renderOverview();
+    try { await api('/api/control', {speaker: g.name, action: playing ? 'pause' : 'play'}); }
+    catch (e) { toast(e.message, true); }
+    setTimeout(loadOverview, 500);
+  };
+  const row = el('div', 'rc-now-row');
+  row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px';
+  row.append(now, toggle);
+
+  const vol = el('div', 'rc-vol');
+  vol.append(icon(g.muted ? 'vol-off' : 'vol'));
+  const slider = el('input'); slider.type = 'range'; slider.min = 0; slider.max = 100;
+  slider.value = g.volume || 0; slider.disabled = g.volume == null;
+  slider.setAttribute('aria-label', `Lautstärke ${g.name}`);
+  const num = el('output', '', g.volume == null ? '–' : String(g.volume));
+  fill(slider);
+  slider.oninput = () => { num.textContent = slider.value; fill(slider); overviewTouched = Date.now(); };
+  slider.onchange = async () => {
+    try { await api('/api/control', {speaker: g.name, volume: Number(slider.value)}); }
+    catch (e) { toast(e.message, true); }
+    if (g.name === speaker()) { volumeTouched = 0; refreshStatus(); }
+  };
+  vol.append(slider, num);
+  card.append(head, row, vol);
+  return card;
+}
+
+let overviewTouched = 0;
+function renderOverview() {
+  if (Date.now() - overviewTouched < 2500) return;   // do not move a slider under the finger
+  $('roomsEmpty').hidden = overview.length > 0;
+  $('roomCards').replaceChildren(...overview.map(roomCard));
+}
+
+function chooseRoom(name, quiet) {
+  if (![...$('speaker').options].some((o) => o.value === name) || name === speaker()) return renderOverview();
+  $('speaker').value = name;
+  $('speaker').onchange();
+  if (!quiet) toast(`${name} gewählt`);
+  renderOverview();
+}
+
+$('pauseAll').onclick = async () => {
+  buzz();
+  try {
+    const r = await api('/api/pauseall', {});
+    toast(r.paused.length ? `Pausiert: ${r.paused.join(', ')}` : 'Es läuft gerade nichts.');
+  } catch (e) { toast(e.message, true); }
+  setTimeout(() => { loadOverview(); refreshStatus(); }, 400);
+};
+setInterval(() => { if (currentTab === 'rooms' && view.kind === 'home' && !document.hidden) loadOverview(); }, 3000);
+
+// ---- presets ---------------------------------------------------------------------------
+
+let presets = [], editingPreset = null;
+async function loadPresets() {
+  try { presets = await api('/api/presets'); } catch (e) { presets = []; }
+  renderPresets();
+}
+
+function renderPresets() {
+  const cards = presets.map((p) => {
+    const card = el('button', 'preset');
+    card.setAttribute('aria-label', `Voreinstellung ${p.name} starten`);
+    card.append(el('b', '', p.name), el('small', '', `${sourceText(p.source)} · ${p.rooms.join(', ')}`));
+    card.onclick = async () => {
+      buzz();
+      card.classList.add('busy');
+      try {
+        const r = await api('/api/presets', {op: 'run', id: p.id});
+        toast(`${p.name}: ${r.playing}`);
+        chooseRoom(r.speaker, true);
+      } catch (e) { toast(e.message, true); }
+      card.classList.remove('busy');
+      setTimeout(() => { refreshStatus(); loadOverview(); }, 800);
+    };
+    card.oncontextmenu = (e) => { e.preventDefault(); editPreset(p); };   // long press edits
+    return card;
+  });
+  if (presets.length) {
+    const add = el('button', 'preset add');
+    add.setAttribute('aria-label', 'Voreinstellung hinzufügen');
+    add.append(icon('add'), el('span', '', 'Neu'));
+    add.onclick = () => editPreset(null);
+    cards.push(add);
+    $('presets').replaceChildren(...cards);
+  } else {
+    const intro = el('button', 'preset-intro');
+    intro.append(el('b', '', 'Erste Voreinstellung anlegen'),
+                 el('small', '', 'Zum Beispiel: Playlist „Chill“ in Küche und Wohnzimmer, Lautstärke 15. Lange drücken bearbeitet sie später.'));
+    intro.onclick = () => editPreset(null);
+    $('presets').replaceChildren(intro);
+  }
+  $('presetBox').hidden = !presets.length && !library.favorites.length && !library.playlists.length && !sonosFavs.length;
+}
+
+function fillSourceOptions(select, src) {
+  const sources = [option('favorites', 'Favoriten')];
+  library.playlists.forEach((p) => sources.push(option('playlist:' + p.name, 'Playlist: ' + p.name)));
+  sonosFavs.forEach((f) => sources.push(option('sonosfav:' + f.index, 'Sonos: ' + f.title)));
+  select.replaceChildren(...sources);
+  const current = src.type === 'playlist' ? 'playlist:' + src.name : src.type === 'sonosfav' ? 'sonosfav:' + src.index : 'favorites';
+  if (![...select.options].some((o) => o.value === current)) select.append(option(current, sourceText(src)));
+  select.value = current;
+}
+
+function sourceFromSelect(select, fallback) {
+  const [type, ...rest] = select.value.split(':');
+  const value = rest.join(':');
+  if (type === 'playlist') return {type, name: value};
+  if (type === 'sonosfav') {
+    const fav = sonosFavs.find((f) => f.index === Number(value));
+    return {type, index: Number(value), title: fav ? fav.title : (fallback && fallback.title) || ''};
+  }
+  return {type: 'favorites'};
+}
+
+function editPreset(p) {
+  editingPreset = p ? {...p} : {name: '', rooms: [speaker()], source: {type: library.playlists.length ? 'playlist' : 'favorites',
+                                    name: (library.playlists[0] || {}).name}, volume: null, shuffle: false};
+  $('presetTitle').textContent = p ? 'Voreinstellung bearbeiten' : 'Neue Voreinstellung';
+  $('prName').value = editingPreset.name;
+  fillSourceOptions($('prSource'), editingPreset.source.type === 'playlist' && !editingPreset.source.name
+    ? {type: 'favorites'} : editingPreset.source);
+  $('prVol').value = editingPreset.volume == null ? 15 : editingPreset.volume;
+  $('prVolNum').textContent = $('prVol').value; fill($('prVol'));
+  $('prDelete').hidden = $('prRun').hidden = !p;
+  paintPresetEditor();
+  openSheet('presetSheet');
+}
+
+function paintPresetEditor() {
+  const rooms = [...$('speaker').options].map((o) => o.value);
+  editingPreset.rooms.forEach((r) => { if (!rooms.includes(r)) rooms.push(r); });
+  $('prRooms').replaceChildren(...rooms.map((name) => {
+    const b = el('button', 'pill', name);
+    const index = editingPreset.rooms.indexOf(name);
+    b.setAttribute('aria-pressed', index >= 0);
+    if (index === 0 && editingPreset.rooms.length > 1) b.textContent = `${name} (spielt)`;
+    b.onclick = () => {
+      editingPreset.rooms = index >= 0 ? editingPreset.rooms.filter((r) => r !== name) : [...editingPreset.rooms, name];
+      paintPresetEditor();
+    };
+    return b;
+  }));
+  const fixed = editingPreset.volume != null;
+  $('prSetVol').setAttribute('aria-checked', fixed);
+  $('prVolRow').hidden = !fixed;
+  $('prShuffle').setAttribute('aria-checked', !!editingPreset.shuffle);
+}
+
+$('prSetVol').onclick = () => {
+  editingPreset.volume = editingPreset.volume == null ? Number($('prVol').value) : null;
+  paintPresetEditor();
+};
+$('prVol').oninput = () => { $('prVolNum').textContent = $('prVol').value; fill($('prVol')); editingPreset.volume = Number($('prVol').value); };
+$('prShuffle').onclick = () => { editingPreset.shuffle = !editingPreset.shuffle; paintPresetEditor(); };
+
+function presetFromEditor() {
+  return {...editingPreset, name: $('prName').value, source: sourceFromSelect($('prSource'), editingPreset.source)};
+}
+
+$('prSave').onclick = async () => {
+  try {
+    presets = await api('/api/presets', {op: 'save', preset: presetFromEditor()});
+    renderPresets();
+    closeSheet();
+    toast('Voreinstellung gespeichert');
+  } catch (e) { toast(e.message, true); }
+};
+$('prRun').onclick = async () => {
+  try {
+    presets = await api('/api/presets', {op: 'save', preset: presetFromEditor()});
+    const r = await api('/api/presets', {op: 'run', id: editingPreset.id});
+    closeSheet();
+    renderPresets();
+    toast(`Spielt: ${r.playing}`);
+    chooseRoom(r.speaker, true);
+    setTimeout(refreshStatus, 800);
+  } catch (e) { toast(e.message, true); }
+};
+$('prDelete').onclick = async () => {
+  try { presets = await api('/api/presets', {op: 'delete', id: editingPreset.id}); renderPresets(); closeSheet(); toast('Voreinstellung gelöscht'); }
+  catch (e) { toast(e.message, true); }
+};
 
 // ---- start -----------------------------------------------------------------------------------
 
@@ -2701,6 +3037,7 @@ if (here() !== 'home') history.replaceState(null, '');  // a reload starts at th
 markTab('home');
 renderHome();
 loadLibrary();
+loadPresets();
 checkAppUpdate();
 setInterval(refreshStatus, 3000);
 setInterval(() => { if (status && status.state === 'PLAYING' && !document.hidden) paint(); }, 1000);
@@ -2713,7 +3050,7 @@ document.addEventListener('visibilitychange', () => {
   await loadSpeakers(false);
   const params = new URLSearchParams(location.search);
   const tab = params.get('tab');   // from the app's launcher shortcuts
-  if (['search', 'library', 'home'].includes(tab) && !params.get('q')) {
+  if (['search', 'library', 'home', 'rooms'].includes(tab) && !params.get('q')) {
     history.replaceState(null, '', location.pathname);
     selectTab(tab);
   }

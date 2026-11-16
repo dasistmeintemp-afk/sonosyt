@@ -11,6 +11,7 @@ import threading
 from pathlib import Path
 
 from ..domain.alarm import normalize_alarm
+from ..domain.preset import normalize_preset
 from ..domain.track import Track
 
 HISTORY_LIMIT = 50
@@ -26,6 +27,7 @@ class Library:
         self._playlists: dict[str, list[Track]] = {}
         self._positions: dict[str, int] = {}  # video id -> seconds, to resume long videos
         self._alarms: list[dict] = []
+        self._presets: list[dict] = []
         self._load()
 
     def _load(self) -> None:
@@ -60,6 +62,11 @@ class Library:
                 self._alarms.append(normalize_alarm(alarm))
             except (ValueError, TypeError, KeyError):
                 continue
+        for preset in data.get("presets") or []:
+            try:
+                self._presets.append(normalize_preset(preset))
+            except (ValueError, TypeError, KeyError):
+                continue
         for entry in data.get("playlists") or []:
             if isinstance(entry, dict) and entry.get("name"):
                 self._playlists[str(entry["name"])] = tracks("tracks", entry)
@@ -72,6 +79,7 @@ class Library:
             "playlists": self._playlist_dicts(),
             "positions": self._positions,
             "alarms": self._alarms,
+            "presets": self._presets,
         }
         tmp = self.path.with_suffix(".tmp")
         try:
@@ -201,6 +209,31 @@ class Library:
             for alarm in self._alarms:
                 if alarm["id"] == alarm_id:
                     alarm["enabled"] = False
+            self._save()
+
+    # -- presets -----------------------------------------------------------------
+
+    def presets(self) -> list[dict]:
+        with self._lock:
+            return [dict(p) for p in self._presets]
+
+    def save_preset(self, data: dict) -> dict:
+        preset = normalize_preset(data)
+        with self._lock:
+            for i, old in enumerate(self._presets):
+                if old["id"] == preset["id"]:
+                    self._presets[i] = preset
+                    break
+            else:
+                if len(self._presets) >= 24:
+                    raise ValueError("Höchstens 24 Voreinstellungen.")
+                self._presets.append(preset)
+            self._save()
+        return preset
+
+    def delete_preset(self, preset_id: str) -> None:
+        with self._lock:
+            self._presets = [p for p in self._presets if p["id"] != preset_id]
             self._save()
 
     # -- resume positions ------------------------------------------------------

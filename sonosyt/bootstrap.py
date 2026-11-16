@@ -17,7 +17,9 @@ from .application.background import AutoplayService, Monitor
 from .application.library import LibraryService
 from .application.lyrics import LyricsService
 from .application.playback import PlaybackService
+from .application.presets import PresetService
 from .application.rooms import RoomService
+from .application.sources import SourcePlayer
 from .application.system import StreamingService, SystemService
 from .application.tracks import TrackCatalog
 
@@ -79,7 +81,8 @@ def build(
     playback = PlaybackService(speakers, converter, tracks, library, network,
                                port=port, public_url=public_url, prefetch_wait=prefetch_wait)
     rooms = RoomService(speakers, playback)
-    alarms = AlarmService(library, speakers, playback, rooms)
+    sources = SourcePlayer(library, speakers, playback)
+    alarms = AlarmService(library, speakers, playback, rooms, sources)
     autoplay = AutoplayService(speakers, tracks, library, playback)
     streaming = StreamingService(converter, thumbnails)
     return Application(
@@ -88,6 +91,7 @@ def build(
         rooms=rooms,
         library=LibraryService(library, tracks, rooms),
         alarms=alarms,
+        presets=PresetService(library, speakers, rooms, sources),
         lyrics=LyricsService(lyrics_source),
         autoplay=autoplay,
         monitor=Monitor(speakers, converter, library, playback, autoplay, alarms),

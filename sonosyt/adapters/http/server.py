@@ -68,6 +68,8 @@ def get_routes(app: Application) -> dict:
         "/api/sonosfav": lambda q: app.rooms.favorites(_q(q, "speaker")),
         "/api/library": lambda q: app.library.snapshot(),
         "/api/alarms": lambda q: app.alarms.list(),
+        "/api/presets": lambda q: app.presets.list(),
+        "/api/system": lambda q: app.rooms.overview(),
         "/api/lyrics": lambda q: app.lyrics.get(app.tracks.track(_q(q, "id"))),
         "/api/info": lambda q: app.system.info(),
         "/api/diagnose": lambda q: app.system.diagnose(_q(q, "speaker")),
@@ -96,8 +98,20 @@ def post_routes(app: Application) -> dict:
             return app.alarms.test(b["id"])
         raise ValueError("op must be save, delete or test")
 
+    def presets(b):
+        op = b.get("op") or "save"
+        if op == "save":
+            return app.presets.save(b["preset"])
+        if op == "delete":
+            return app.presets.delete(b["id"])
+        if op == "run":
+            return app.presets.run(b["id"])
+        raise ValueError("op must be save, delete or run")
+
     return {
         "/api/play": play,
+        "/api/presets": presets,
+        "/api/pauseall": lambda b: app.rooms.pause_all(),
         "/api/control": control,
         "/api/group": lambda b: app.rooms.group(str(b["speaker"]), str(b["room"]), bool(b.get("join"))),
         "/api/eq": lambda b: app.rooms.set_eq(str(b["room"]), b.get("bass"), b.get("treble"), b.get("loudness")),
