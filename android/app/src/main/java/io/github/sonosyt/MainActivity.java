@@ -184,8 +184,8 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    getWindow().setStatusBarColor(dark ? 0xFF171614 : 0xFFF6F5F2);
-                    getWindow().setNavigationBarColor(dark ? 0xFF2A2824 : 0xFFFFFFFF);
+                    getWindow().setStatusBarColor(dark ? 0xFF09090B : 0xFFFAFAFA);
+                    getWindow().setNavigationBarColor(dark ? 0xFF09090B : 0xFFFAFAFA);
                     View decor = getWindow().getDecorView();
                     int light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
                             | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;

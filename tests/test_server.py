@@ -450,3 +450,23 @@ def test_unplayable_video_is_reported_instead_of_silently_queued(srv):
     assert json.loads(body)["error"] == "Dieses Video lässt sich nicht abspielen: Sign in to confirm your age"
     assert sonos.enqueued == []
     assert playback_error("") == "Dieses Video lässt sich nicht abspielen: unbekannter Fehler"
+
+
+def test_thumbnails_are_served_from_our_origin_and_cached(srv):
+    base, app, _ = srv
+    jpeg = b"\xff\xd8\xff\xe0" + b"x" * 500
+    fetched = []
+    app.fetch_thumbnail = lambda vid: fetched.append(vid) or jpeg
+    status, headers, body = call(base + f"/thumb/{VID}.jpg")
+    assert status == 200 and body == jpeg and headers["Content-Type"] == "image/jpeg"
+    assert "max-age" in headers["Cache-Control"]
+    assert call(base + f"/thumb/{VID}.jpg")[2] == jpeg
+    assert fetched == [VID]  # the second request came from the cache
+
+    def fail(vid):
+        raise OSError("offline")
+
+    app.fetch_thumbnail = fail
+    assert call(base + "/thumb/bbbbbbbbbbb.jpg")[0] == 404
+    assert call(base + "/thumb/../../x.jpg")[0] == 404
+    assert call(base + f"/thumb/{VID}.jpg")[0] == 200  # cached copy still served offline

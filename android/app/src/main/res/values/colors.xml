@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="icon_background">#C2410C</color>
-    <color name="page">#F6F5F2</color>
-    <color name="player">#FFFFFF</color>
+    <color name="page">#FAFAFA</color>
+    <color name="player">#FAFAFA</color>
     <bool name="light_bars">true</bool>
 </resources>

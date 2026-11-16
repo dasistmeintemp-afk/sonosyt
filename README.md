@@ -54,6 +54,10 @@ python3 -m venv .venv
 
 Danach:
 
+- **Unten** wechselst du zwischen **Start** (Schnellauswahl, zuletzt gespielt, „Für dich",
+  Favoriten, Playlists), **Suchen** und **Bibliothek** (Playlists, Favoriten, Verlauf).
+- **Der Mini-Player** über der Leiste nimmt die Farbe des laufenden Covers an; ein Tipp darauf
+  öffnet die große Wiedergabe-Ansicht mit Lautstärke, Stummschalten und Warteschlange.
 - **Suchen und antippen** spielt sofort im gewählten Raum. Beim Tippen erscheinen
   Suchvorschläge; die obersten Treffer werden schon vorbereitet, damit der Ton schnell kommt.
 - **Plus-Symbol** reiht den Titel ein. **Drei Punkte** öffnen das Menü: als Nächstes spielen,

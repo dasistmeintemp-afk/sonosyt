@@ -5,6 +5,7 @@ from __future__ import annotations
 import ipaddress
 import json
 import logging
+import os
 import re
 import shutil
 import threading
@@ -55,6 +56,22 @@ def playback_error(detail: str) -> str:
     return f"Dieses Video lässt sich nicht abspielen: {line[:200]}"
 
 
+THUMB_RE = re.compile(r"^/thumb/([A-Za-z0-9_-]{11})\.jpg$")
+THUMB_LIMIT = 3000  # cached cover images kept on disk (~15 kB each)
+
+
+def fetch_thumbnail(video_id: str) -> bytes:
+    """The small YouTube cover of a video (320x180 JPEG)."""
+    import urllib.request
+
+    url = f"https://i.ytimg.com/vi/{youtube.watch_id(video_id)}/mqdefault.jpg"
+    with urllib.request.urlopen(url, timeout=6) as resp:
+        data = resp.read(512 * 1024)
+    if not data.startswith(b"\xff\xd8"):
+        raise ValueError("not a JPEG")
+    return data
+
+
 STREAM_RE = re.compile(r"^/(stream|live)/([A-Za-z0-9_-]{11})\.mp3$")
 AUTOPLAY_INTERVAL = 8.0
 MAX_BODY = 64 * 1024
@@ -77,6 +94,7 @@ class App:
         allowed_hosts: list[str] | None = None,
     ):
         self.suggest = suggest
+        self.fetch_thumbnail = fetch_thumbnail
         hosts = {h.strip().lower() for h in allowed_hosts or [] if h.strip()}
         if public_url:
             hosts.add((urlsplit(public_url).hostname or "").lower())
@@ -365,6 +383,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         url = urlsplit(self.path)
         query = parse_qs(url.query)
+        m = THUMB_RE.match(url.path)
+        if m:
+            return self._thumb(m.group(1))
         m = STREAM_RE.match(url.path)
         if m:
             self.app.fetches[self.client_address[0]] = time.time()
@@ -586,6 +607,35 @@ class Handler(BaseHTTPRequestHandler):
             pass  # speaker stopped listening
         finally:
             chunks.close()  # stops ffmpeg
+
+    def _thumb(self, video_id: str) -> None:
+        """Cover images from our own origin, so the page may read their colours."""
+        folder = self.app.transcoder.cache_dir / "thumbs"
+        path = folder / f"{video_id}.jpg"
+        try:
+            data = path.read_bytes()
+        except OSError:
+            try:
+                data = self.app.fetch_thumbnail(video_id)
+            except Exception:  # noqa: BLE001 - no cover: the page shows a placeholder
+                return self._error(404, "kein Cover")
+            try:
+                folder.mkdir(exist_ok=True)
+                tmp = path.with_suffix(".tmp")
+                tmp.write_bytes(data)
+                os.replace(tmp, path)
+                files = sorted(folder.glob("*.jpg"), key=lambda p: p.stat().st_mtime)
+                for old in files[: max(0, len(files) - THUMB_LIMIT)]:
+                    old.unlink(missing_ok=True)
+            except OSError:
+                pass  # serving still works without the cache
+        self.send_response(200)
+        self.send_header("Content-Type", "image/jpeg")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "public, max-age=604800")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(data)
 
     def _send_file(self, path: Path) -> None:
         size = path.stat().st_size
