@@ -470,3 +470,66 @@ def test_thumbnails_are_served_from_our_origin_and_cached(srv):
     assert call(base + "/thumb/bbbbbbbbbbb.jpg")[0] == 404
     assert call(base + "/thumb/../../x.jpg")[0] == 404
     assert call(base + f"/thumb/{VID}.jpg")[0] == 200  # cached copy still served offline
+
+
+def test_sonos_favourites_and_crossfade(srv):
+    base, app, sonos = srv
+    sonos.favorites = lambda speaker: [{"index": 0, "title": "Radio Eins", "art": "", "kind": "Radiosender"}]
+    played = []
+    sonos.play_favorite = lambda speaker, index: played.append((speaker, index)) or "Radio Eins"
+    assert json.loads(call(base + "/api/sonosfav?speaker=K%C3%BCche")[2])[0]["title"] == "Radio Eins"
+    status, _, body = call(base + "/api/sonosfav/play", {"speaker": "Küche", "index": 0})
+    assert status == 200 and json.loads(body) == {"title": "Radio Eins"} and played == [("Küche", 0)]
+    assert call(base + "/api/control", {"speaker": "Küche", "action": "crossfade", "value": 1})[0] == 200
+    assert sonos.controls[-1] == ("Küche", "crossfade", 1)
+
+
+def test_lyrics_endpoint(srv):
+    base, app, _ = srv
+    call(base + "/api/search?q=beatles")
+    app.lyrics.search = lambda params: [
+        {"trackName": "Song", "artistName": "Chan", "duration": 1, "plainLyrics": "la la",
+         "syncedLyrics": "[00:00.50] la\n[00:01.00] la"}]
+    body = json.loads(call(base + f"/api/lyrics?id={VID}")[2])
+    assert body["found"] and body["synced"] == [[0.5, "la"], [1.0, "la"]]
+    assert call(base + "/api/lyrics?id=nope")[0] == 400
+
+
+def test_alarms_fire_once_per_minute_in_their_time_zone(srv):
+    from datetime import datetime, timezone
+
+    base, app, sonos = srv
+    call(base + "/api/search?q=beatles")
+    call(base + "/api/playlist", {"name": "Morgen", "id": VID})
+    alarm = {"time": "07:30", "days": [0, 1, 2, 3, 4], "speaker": "Küche",
+             "source": {"type": "playlist", "name": "Morgen"}, "volume": 25, "fade": True,
+             "tz": "Europe/Berlin"}
+    saved = json.loads(call(base + "/api/alarms", {"op": "save", "alarm": alarm})[2])
+    assert len(saved) == 1 and saved[0]["enabled"] and saved[0]["id"]
+    assert call(base + "/api/alarms", {"op": "save", "alarm": {**alarm, "time": "7:3"}})[0] == 400
+    assert call(base + "/api/alarms", {"op": "save", "alarm": {**alarm, "speaker": "Bad"}})[0] == 404
+    assert call(base + "/api/alarms", {"op": "save", "alarm": {**alarm, "tz": "Mars/Base"}})[0] == 400
+
+    monday_0630_utc = datetime(2026, 11, 16, 6, 30, tzinfo=timezone.utc)  # 07:30 in Berlin
+    assert [a["time"] for a in app.due_alarms(monday_0630_utc)] == ["07:30"]
+    assert app.due_alarms(monday_0630_utc) == []  # once per minute only
+    assert app.due_alarms(datetime(2026, 11, 21, 6, 30, tzinfo=timezone.utc)) == []  # Saturday
+    assert app.due_alarms(datetime(2026, 11, 17, 7, 30, tzinfo=timezone.utc)) == []  # 08:30 Berlin
+
+    what = app.fire_alarm(saved[0], ramp_seconds=0.15)
+    import time
+    time.sleep(0.5)
+    assert what == "Morgen" and sonos.enqueued[-1][2] == "now"
+    volumes = [c[2] for c in sonos.controls if c[1] == "volume"]
+    assert volumes[0] == 3 and volumes[-1] == 25  # soft start, then up to the chosen level
+
+    once = json.loads(call(base + "/api/alarms", {"op": "save", "alarm": {
+        **alarm, "time": "06:00", "days": [], "source": {"type": "favorites"}, "fade": False}})[2])
+    one_off = next(a for a in once if a["time"] == "06:00")
+    call(base + "/api/favorite", {"id": VID})
+    assert app.fire_alarm(one_off) == "Favoriten"
+    assert not next(a for a in app.library.alarms() if a["id"] == one_off["id"])["enabled"]
+
+    assert json.loads(call(base + "/api/alarms", {"op": "test", "id": saved[0]["id"]})[2])["playing"] == "Morgen"
+    remaining = json.loads(call(base + "/api/alarms", {"op": "delete", "id": saved[0]["id"]})[2])
+    assert [a["time"] for a in remaining] == ["06:00"]

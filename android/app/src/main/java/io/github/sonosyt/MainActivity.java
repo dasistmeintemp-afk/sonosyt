@@ -64,6 +64,8 @@ public class MainActivity extends Activity {
     private Button scan;
     /** Link shared before a server was configured; opened once one is. */
     private String pendingQuery;
+    /** Tab to open, from a launcher shortcut (sonosyt://open/search). */
+    private String pendingTab;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +83,7 @@ public class MainActivity extends Activity {
 
         if (savedInstanceState == null) {
             pendingQuery = sharedLink(getIntent());
+            pendingTab = shortcutTab(getIntent());
         }
         // The media notification needs this on Android 13+. Asked once.
         if (Build.VERSION.SDK_INT >= 33 && !prefs.getBoolean("asked_notifications", false)
@@ -201,8 +204,18 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         String link = sharedLink(intent);
+        String tab = shortcutTab(intent);
         if (link != null) {
             pendingQuery = link;
+            if (server() != null) {
+                openServer();
+            }
+        } else if (tab != null && server() != null && web.getUrl() != null
+                && web.getVisibility() == View.VISIBLE) {
+            // The page is already open: just switch the tab, no reload.
+            web.loadUrl("javascript:void(window.selectTab&&selectTab('" + tab + "'))");
+        } else if (tab != null) {
+            pendingTab = tab;
             if (server() != null) {
                 openServer();
             }
@@ -258,6 +271,10 @@ public class MainActivity extends Activity {
         if (pendingQuery != null) {
             url += "?q=" + Uri.encode(pendingQuery);
             pendingQuery = null;
+            pendingTab = null;
+        } else if (pendingTab != null) {
+            url += "?tab=" + Uri.encode(pendingTab);
+            pendingTab = null;
         }
         setup.setVisibility(View.GONE);
         web.setVisibility(View.VISIBLE);
@@ -519,6 +536,16 @@ public class MainActivity extends Activity {
                 conn.disconnect();
             }
         }
+    }
+
+    /** "search" or "library" for a launcher shortcut, otherwise null. */
+    private static String shortcutTab(Intent intent) {
+        Uri data = intent == null ? null : intent.getData();
+        if (data == null || !"sonosyt".equals(data.getScheme()) || !"open".equals(data.getHost())) {
+            return null;
+        }
+        String tab = data.getLastPathSegment();
+        return "search".equals(tab) || "library".equals(tab) ? tab : null;
     }
 
     /** The first URL in text shared to the app, e.g. from YouTube's share sheet. */

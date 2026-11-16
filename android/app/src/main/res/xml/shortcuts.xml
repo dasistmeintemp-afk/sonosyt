@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press on the app icon: jump straight to search or the library. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_search"
+        android:shortcutId="search"
+        android:shortcutLongLabel="@string/shortcut_search"
+        android:shortcutShortLabel="@string/shortcut_search">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="sonosyt://open/search"
+            android:targetClass="io.github.sonosyt.MainActivity"
+            android:targetPackage="io.github.sonosyt" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_library"
+        android:shortcutId="library"
+        android:shortcutLongLabel="@string/shortcut_library"
+        android:shortcutShortLabel="@string/shortcut_library">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="sonosyt://open/library"
+            android:targetClass="io.github.sonosyt.MainActivity"
+            android:targetPackage="io.github.sonosyt" />
+    </shortcut>
+</shortcuts>
