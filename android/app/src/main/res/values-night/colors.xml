@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="page">#171614</color>
-    <color name="player">#2A2824</color>
+    <color name="page">#09090B</color>
+    <color name="player">#09090B</color>
     <bool name="light_bars">false</bool>
 </resources>
