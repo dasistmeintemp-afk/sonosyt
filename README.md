@@ -80,7 +80,8 @@ Danach:
 - **Plus-Symbol** reiht den Titel ein. **Drei Punkte** öffnen das Menü: als Nächstes spielen,
   Favorit, zu einer Playlist hinzufügen. Playlists, Favoriten und zuletzt Gespieltes stehen
   auf der Startseite.
-- **Teilen → sonosyt** in der YouTube-App spielt das Video direkt ab.
+- **Teilen** in der YouTube-App: „Auf Sonos abspielen" oder „Zur Sonos-Warteschlange" – du bleibst
+  in YouTube, eine kurze Meldung bestätigt es.
 - **Die Lautstärketasten des Handys** regeln die Sonos-Lautstärke – in der App und, solange
   Musik läuft, auch bei gesperrtem Bildschirm (bei gruppierten Räumen die der ganzen Gruppe).
 - **Benachrichtigung und Sperrbildschirm** zeigen den laufenden Titel mit Pause und
@@ -200,6 +201,16 @@ zwischen den VLANs erlauben:
 
 - Server → Lautsprecher: TCP-Port 1400 (Steuerung)
 - Lautsprecher → Server: TCP-Port 8327 (Abruf der Musik)
+
+## Kleinigkeiten, die das Leben leichter machen
+
+- Ist der Server kurz weg (Neustart, Update), verbindet sich die App von selbst wieder; nach einem
+  Server-Update lädt die Oberfläche automatisch neu.
+- Ändert YouTube etwas und yt-dlp scheitert deshalb, aktualisiert sich yt-dlp sofort selbst und
+  versucht es erneut (höchstens einmal pro Stunde).
+- Der Container meldet seinen Zustand – Unraid zeigt „healthy" an.
+- Im Browser am Computer: Leertaste Pause, ↑/↓ Lautstärke, N/P nächster/vorheriger Titel,
+  M stumm, / Suche, Esc schließt.
 
 ## Hinweise
 

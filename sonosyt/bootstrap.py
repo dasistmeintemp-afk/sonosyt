@@ -33,6 +33,7 @@ def build(
     bitrate: str = "192k",
     cache_size_mb: int = 2048,
     prefetch_wait: float = 8.0,
+    auto_update: bool = False,
     speakers=None,
     catalog=None,
     converter=None,
@@ -50,7 +51,12 @@ def build(
     if catalog is None:
         from .adapters.youtube import YtDlpCatalog
 
-        catalog = YtDlpCatalog()
+        heal = None
+        if auto_update:  # yt-dlp may update itself: do so at once when YouTube changed
+            from .adapters.updater import update_ytdlp
+
+            heal = update_ytdlp
+        catalog = YtDlpCatalog(heal=heal)
     if converter is None:
         from .adapters.transcoder import Transcoder
 

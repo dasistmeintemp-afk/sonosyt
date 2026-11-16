@@ -3,4 +3,6 @@
     <string name="app_name">sonosyt</string>
     <string name="shortcut_search">Suchen</string>
     <string name="shortcut_library">Bibliothek</string>
+    <string name="share_play">Auf Sonos abspielen</string>
+    <string name="share_queue">Zur Sonos-Warteschlange</string>
 </resources>

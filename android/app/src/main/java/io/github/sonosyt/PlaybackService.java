@@ -21,6 +21,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
+import android.widget.Toast;
 
 import org.json.JSONObject;
 
@@ -45,6 +46,9 @@ public class PlaybackService extends Service {
     static final String ACTION_PAUSE = "io.github.sonosyt.PAUSE";
     static final String ACTION_NEXT = "io.github.sonosyt.NEXT";
     static final String ACTION_PREVIOUS = "io.github.sonosyt.PREVIOUS";
+    static final String ACTION_SHARE = "io.github.sonosyt.SHARE";
+    static final String EXTRA_LINK = "link";
+    static final String EXTRA_QUEUE = "queue";
 
     static final String PREFS = "sonosyt";
     static final String PREF_SERVER = "server_url";
@@ -166,6 +170,8 @@ public class PlaybackService extends Service {
             command("next", null);
         } else if (ACTION_PREVIOUS.equals(action)) {
             command("previous", null);
+        } else if (ACTION_SHARE.equals(action)) {
+            share(intent.getStringExtra(EXTRA_LINK), intent.getBooleanExtra(EXTRA_QUEUE, false));
         } else {
             lastActive = SystemClock.elapsedRealtime();
             failures = 0;
@@ -364,6 +370,103 @@ public class PlaybackService extends Service {
     }
 
     // -- commands ------------------------------------------------------------------
+
+    // -- sharing from YouTube ---------------------------------------------------
+
+    private void toast(final String text) {
+        main.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(getApplicationContext(), text, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    /** Plays (or queues) a shared YouTube link in the chosen room, without opening the app. */
+    private void share(final String link, final boolean queue) {
+        if (link == null) {
+            return;
+        }
+        final String room = prefs.getString(PREF_SPEAKER, "");
+        toast(queue ? "Wird in " + room + " eingereiht …" : "Wird in " + room + " gestartet …");
+        wakeLock.acquire(60000);
+        lastActive = SystemClock.elapsedRealtime();
+        worker.post(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    JSONObject body = new JSONObject();
+                    body.put("speaker", room);
+                    body.put("query", link);
+                    body.put("mode", queue ? "queue" : "now");
+                    Answer answer = send(prefs.getString(PREF_SERVER, "") + "/api/play", body, 90000);
+                    if (answer.json != null && answer.status == 200) {
+                        org.json.JSONArray queued = answer.json.optJSONArray("queued");
+                        int count = queued == null ? 0 : queued.length();
+                        String title = count > 0 ? queued.optJSONObject(0).optString("title") : "";
+                        if (count > 1) {
+                            toast(count + " Titel " + (queue ? "eingereiht" : "werden in " + room + " gespielt"));
+                        } else {
+                            toast((queue ? "Eingereiht: " : "Spielt in " + room + ": ") + title);
+                        }
+                    } else if (answer.status == 0) {
+                        toast("sonosyt-Server nicht erreichbar. Bist du im Heim-WLAN?");
+                    } else {
+                        toast(answer.json != null ? answer.json.optString("error", "Fehler") : "Fehler beim Abspielen");
+                    }
+                } catch (Exception e) {
+                    toast("Fehler beim Abspielen");
+                }
+                worker.removeCallbacks(poll);
+                worker.postDelayed(poll, 800);
+            }
+        });
+    }
+
+    /** An HTTP answer: status 0 means no connection at all. */
+    private static final class Answer {
+        int status;
+        JSONObject json;
+    }
+
+    private static Answer send(String url, JSONObject body, int readTimeout) {
+        Answer answer = new Answer();
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(readTimeout);
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+            OutputStream out = conn.getOutputStream();
+            out.write(body.toString().getBytes("UTF-8"));
+            out.close();
+            answer.status = conn.getResponseCode();
+            InputStream in = answer.status < 400 ? conn.getInputStream() : conn.getErrorStream();
+            if (in != null) {
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                byte[] chunk = new byte[4096];
+                int n;
+                while ((n = in.read(chunk)) > 0) {
+                    buffer.write(chunk, 0, n);
+                }
+                in.close();
+                answer.json = new JSONObject(buffer.toString("UTF-8"));
+            }
+        } catch (java.io.IOException e) {
+            if (answer.status == 0) {
+                answer.json = null; // could not connect
+            }
+        } catch (Exception e) {
+            answer.json = null;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+        return answer;
+    }
 
     private void command(final String action, final Integer value) {
         wakeLock.acquire(8000); // the phone may be asleep: stay up until it is sent

@@ -19,5 +19,8 @@ COPY sonosyt ./sonosyt
 RUN pip install --no-cache-dir .
 
 VOLUME /cache
+# Lets Docker (and the Unraid Docker tab) show whether the server answers.
+HEALTHCHECK --interval=60s --timeout=6s --start-period=40s --retries=3 \
+    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/api/ping' % (os.environ.get('SONOSYT_PORT') or '8327'), timeout=5)"
 EXPOSE 8327
 ENTRYPOINT ["sonosyt", "serve", "--cache-dir", "/cache", "--auto-update"]

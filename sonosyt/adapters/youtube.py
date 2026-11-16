@@ -117,15 +117,45 @@ def thumbnail(video_id: str) -> bytes:
     return data
 
 
+# yt-dlp output that usually means YouTube changed something and yt-dlp needs an update.
+OUTDATED = re.compile(r"unable to extract|please report this issue|signature|nsig|HTTP Error 403", re.I)
+HEAL_INTERVAL = 3600.0
+
+
 class YtDlpCatalog:
     """The VideoCatalog port. Looks the functions up at call time, so they can be
-    replaced in tests."""
+    replaced in tests.
+
+    With ``heal`` (a function that updates yt-dlp and says whether it did), a
+    failure that looks like YouTube having changed triggers one update and one
+    retry, at most once an hour.
+    """
+
+    def __init__(self, heal=None, clock=None):
+        import time
+
+        self.heal = heal
+        self.clock = clock or time.monotonic
+        self._last_heal = None
+
+    def _healing(self, fn, *args):
+        try:
+            return fn(*args)
+        except MediaError as exc:
+            now = self.clock()
+            recent = self._last_heal is not None and now - self._last_heal < HEAL_INTERVAL
+            if not self.heal or recent or not OUTDATED.search(str(exc)):
+                raise
+            self._last_heal = now
+            if not self.heal():
+                raise
+            return fn(*args)
 
     def lookup(self, query: str, limit: int = 10) -> list[Track]:
-        return lookup(query, limit)
+        return self._healing(lookup, query, limit)
 
     def related(self, video_id: str) -> list[Track]:
-        return related(video_id)
+        return self._healing(related, video_id)
 
     def suggest(self, query: str) -> list[str]:
         return suggest(query)

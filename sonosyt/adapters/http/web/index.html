@@ -2253,6 +2253,7 @@ async function refreshStatus() {
     }
     return;
   }
+  if (offline >= 2) checkServerVersion();   // back after an outage: maybe it was updated
   offline = 0;
   status = fresh;
   statusAt = Date.now();
@@ -2780,6 +2781,42 @@ window.sonosytUpdateState = (state) => {
   if (state === 'downloading') $('update').hidden = true;
   if (state === 'failed') { $('update').hidden = false; $('updateLink').textContent = 'Herunterladen'; $('updateLink').onclick = null; }
 };
+
+// ---- server updates ------------------------------------------------------------------------
+
+// After the server was updated (e.g. "Apply Update" in Unraid) the page reloads itself,
+// so the new interface appears without anyone having to do anything.
+let serverVersion = null;
+async function checkServerVersion() {
+  try {
+    const {version} = await api('/api/ping');
+    if (serverVersion && version !== serverVersion && !document.querySelector('.sheet:not([hidden])')) {
+      toast('sonosyt wurde aktualisiert – lade neu …');
+      setTimeout(() => location.reload(), 800);
+    }
+    serverVersion = version;
+  } catch (e) { /* still restarting */ }
+}
+checkServerVersion();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkServerVersion(); });
+
+// ---- keyboard shortcuts (browser on a computer) -------------------------------------------------
+
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input, select, textarea')) return;
+  const keys = {
+    ' ': () => $('toggle').onclick(),
+    'ArrowUp': () => volume !== null && setVolume(volume + 2),
+    'ArrowDown': () => volume !== null && setVolume(volume - 2),
+    'n': () => control('next'),
+    'p': () => control('previous'),
+    'm': () => $('muteBtn').onclick(),
+    '/': () => { selectTab('search'); setTimeout(() => $('q').focus(), 80); },
+    'Escape': () => { if (here() === 'sheet' || here() === 'player') history.back(); },
+  };
+  const run = keys[e.key];
+  if (run && speaker()) { e.preventDefault(); run(); }
+});
 
 // ---- app update hint ----------------------------------------------------------------------------
 

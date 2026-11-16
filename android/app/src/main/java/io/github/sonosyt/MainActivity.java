@@ -211,11 +211,16 @@ public class MainActivity extends Activity {
         }
         web.onResume();
         startPlaybackService();
+        if (reconnecting) { // back in the app: try again right away
+            retry.removeCallbacks(reconnect);
+            retry.post(reconnect);
+        }
     }
 
     @Override
     protected void onPause() {
         web.onPause(); // stops the video and page activity while the app is not in front
+        retry.removeCallbacks(reconnect); // no retries in the background; onResume resumes them
         super.onPause();
     }
 
@@ -365,6 +370,7 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, String url) {
                 if (url.startsWith(SETTINGS_URL)) {
+                    stopReconnecting();
                     showSetup(null);
                     return true;
                 }
@@ -381,14 +387,18 @@ public class MainActivity extends Activity {
 
             @Override
             public void onReceivedError(WebView v, int code, String description, String url) {
-                showSetup("Server nicht erreichbar (" + description + "). "
-                        + "Läuft sonosyt und ist das Handy im Heim-WLAN?");
+                // Usually the server is just restarting (NAS reboot, container update):
+                // keep trying in the background instead of asking for the address again.
+                showSetup("Verbindung zu " + server() + " wird wiederhergestellt … "
+                        + "(" + description + "). Läuft sonosyt und ist das Handy im Heim-WLAN?");
+                scheduleReconnect();
             }
         });
         return view;
     }
 
     private void openServer() {
+        stopReconnecting();
         String url = server() + "/";
         if (pendingQuery != null) {
             url += "?q=" + Uri.encode(pendingQuery);
@@ -469,6 +479,45 @@ public class MainActivity extends Activity {
         return scroll;
     }
 
+    private final android.os.Handler retry = new android.os.Handler(android.os.Looper.getMainLooper());
+    private boolean reconnecting;
+
+    private final Runnable reconnect = new Runnable() {
+        @Override
+        public void run() {
+            final String base = server();
+            if (base == null || setup.getVisibility() != View.VISIBLE || !reconnecting) {
+                return;
+            }
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    final boolean back = isSonosyt(base, 3000);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (!reconnecting || !base.equals(server())) {
+                                return;
+                            }
+                            if (back) {
+                                reconnecting = false;
+                                openServer();
+                            } else {
+                                retry.postDelayed(reconnect, 4000);
+                            }
+                        }
+                    });
+                }
+            }).start();
+        }
+    };
+
+    private void scheduleReconnect() {
+        reconnecting = true;
+        retry.removeCallbacks(reconnect);
+        retry.postDelayed(reconnect, 3000);
+    }
+
     private void showSetup(String message) {
         web.setVisibility(View.GONE);
         setup.setVisibility(View.VISIBLE);
@@ -485,7 +534,13 @@ public class MainActivity extends Activity {
         scan.setEnabled(!busy);
     }
 
+    private void stopReconnecting() {
+        reconnecting = false;
+        retry.removeCallbacks(reconnect);
+    }
+
     private void tryConnect() {
+        stopReconnecting();
         final String base = normalize(address.getText().toString());
         if (base == null) {
             status.setText("Bitte eine Adresse eingeben, z. B. 192.168.1.10");
@@ -520,6 +575,7 @@ public class MainActivity extends Activity {
 
     /** Looks for a sonosyt server on every address of the phone's /24 networks. */
     private void scanNetwork() {
+        stopReconnecting();
         setBusy(true);
         status.setText("Suche im Netzwerk …");
         new Thread(new Runnable() {
@@ -675,7 +731,11 @@ public class MainActivity extends Activity {
         if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) {
             return null;
         }
-        String text = intent.getStringExtra(Intent.EXTRA_TEXT);
+        return firstUrl(intent.getStringExtra(Intent.EXTRA_TEXT));
+    }
+
+    /** The first http(s) URL in a piece of text, or null. */
+    static String firstUrl(String text) {
         if (text == null) {
             return null;
         }

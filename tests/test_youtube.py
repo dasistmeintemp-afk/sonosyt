@@ -94,3 +94,48 @@ def test_extract_reads_json_from_the_ytdlp_subprocess(monkeypatch):
     monkeypatch.setattr(youtube.subprocess, "run", fail)
     with pytest.raises(MediaError, match="Video unavailable"):
         lookup("aaaaaaaaaaa")
+
+
+def test_catalog_updates_ytdlp_once_when_youtube_changed(monkeypatch):
+    from sonosyt.adapters.youtube import YtDlpCatalog
+
+    attempts = []
+
+    def flaky(query, limit=10):
+        attempts.append(query)
+        if len(attempts) == 1:
+            raise MediaError("ERROR: [youtube] abc: Unable to extract player response; please report this issue")
+        return [Track("aaaaaaaaaaa", "T")]
+
+    monkeypatch.setattr(youtube, "lookup", flaky)
+    heals, now = [], [1000.0]
+    catalog = YtDlpCatalog(heal=lambda: heals.append(1) or True, clock=lambda: now[0])
+    assert catalog.lookup("song") == [Track("aaaaaaaaaaa", "T")]
+    assert heals == [1] and attempts == ["song", "song"]
+
+    def broken(query, limit=10):
+        raise MediaError("Unable to extract")
+
+    monkeypatch.setattr(youtube, "lookup", broken)
+    with pytest.raises(MediaError):
+        catalog.lookup("again")  # within the hour: no second update
+    assert heals == [1]
+    now[0] += 3601
+    with pytest.raises(MediaError):
+        catalog.lookup("later")  # updated again, still broken: the error comes through
+    assert heals == [1, 1]
+
+
+def test_real_errors_do_not_trigger_an_update(monkeypatch):
+    from sonosyt.adapters.youtube import YtDlpCatalog
+
+    def unavailable(query, limit=10):
+        raise MediaError("ERROR: [youtube] abc: Video unavailable")
+
+    monkeypatch.setattr(youtube, "lookup", unavailable)
+    heals = []
+    with pytest.raises(MediaError, match="Video unavailable"):
+        YtDlpCatalog(heal=lambda: heals.append(1) or True).lookup("x")
+    with pytest.raises(MediaError):
+        YtDlpCatalog().lookup("x")  # without auto-update nothing is attempted
+    assert heals == []

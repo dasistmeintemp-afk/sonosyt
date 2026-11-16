@@ -55,6 +55,7 @@ def cmd_serve(args) -> int:
         speaker_ips=args.speaker_ip,
         bitrate=args.bitrate,
         cache_size_mb=args.cache_size_mb,
+        auto_update=args.auto_update,
     )
     server = make_server(app, args.host, args.port, args.allow_host, args.public_url)
     app.monitor.start()

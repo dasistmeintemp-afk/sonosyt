@@ -33,13 +33,40 @@
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
-            <!-- "Teilen" in der YouTube-App -->
+        </activity>
+
+        <!-- "Teilen" in der YouTube-App: two targets, no window - you stay in YouTube. -->
+        <activity
+            android:name=".ShareActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <activity-alias
+            android:name=".SharePlay"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/share_play"
+            android:targetActivity=".ShareActivity">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+        <activity-alias
+            android:name=".ShareQueue"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/share_queue"
+            android:targetActivity=".ShareActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
 
         <service
             android:name=".PlaybackService"
