@@ -662,7 +662,7 @@
 
   <div class="update" id="update" hidden>
     <span id="updateText"></span>
-    <a class="pill primary" id="updateLink" href="#">Herunterladen</a>
+    <a class="pill primary" id="updateLink" href="#" target="_blank" rel="noopener">Herunterladen</a>
     <button class="icon-btn" id="updateClose" aria-label="Hinweis schließen"><svg><use href="#i-close"/></svg></button>
   </div>
 
@@ -2769,6 +2769,18 @@ $('setClearCache').onclick = async () => {
   } catch (e) { toast(e.message, true); }
 };
 
+// Progress of an in-app update, reported by the Android app.
+window.sonosytUpdateState = (state) => {
+  const text = {
+    downloading: 'Update wird geladen … Android fragt gleich nach der Installation.',
+    permission: 'Bitte „Aus dieser Quelle zulassen“ einschalten und zurückkehren – dann geht es weiter.',
+    failed: 'Das Update konnte nicht geladen werden. Über „Herunterladen“ im Browser klappt es auch.',
+  }[state];
+  if (text) toast(text, state === 'failed');
+  if (state === 'downloading') $('update').hidden = true;
+  if (state === 'failed') { $('update').hidden = false; $('updateLink').textContent = 'Herunterladen'; $('updateLink').onclick = null; }
+};
+
 // ---- app update hint ----------------------------------------------------------------------------
 
 // The APK is installed by hand, so nothing updates it. Inside the app, compare its
@@ -2797,6 +2809,12 @@ async function checkAppUpdate() {
   $('updateText').textContent = `Neue App-Version ${latest.tag.replace(/^app-v/, '')} verfügbar`;
   $('updateLink').href = latest.url;
   $('updateClose').onclick = () => { store('updateSkipped', latest.tag); $('update').hidden = true; };
+  $('updateLink').textContent = window.SonosytApp && window.SonosytApp.installUpdate ? 'Aktualisieren' : 'Herunterladen';
+  $('updateLink').onclick = (e) => {
+    if (!(window.SonosytApp && window.SonosytApp.installUpdate)) return;   // plain browser: normal download
+    e.preventDefault();
+    bridge('installUpdate', latest.url);
+  };
   $('update').hidden = false;
 }
 

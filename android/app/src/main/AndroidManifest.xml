@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Short tick when a button in the web UI is pressed (navigator.vibrate). -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Installing new versions of this app from within it (Android asks the user once). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- The sonosyt server speaks plain HTTP inside the home network. -->
     <application

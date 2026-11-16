@@ -7,7 +7,12 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-ENV PYTHONUNBUFFERED=1
+ARG VERSION=0.1.0
+ENV PYTHONUNBUFFERED=1 SONOSYT_VERSION=${VERSION}
+LABEL org.opencontainers.image.title="sonosyt" \
+      org.opencontainers.image.description="YouTube-Ton auf Sonos-Lautsprechern" \
+      org.opencontainers.image.source="https://github.com/dasistmeintemp-afk/sonosyt" \
+      org.opencontainers.image.version="${VERSION}"
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY sonosyt ./sonosyt

@@ -119,15 +119,23 @@ def main(argv: list[str] | None = None) -> int:
             help="Adresse des laufenden sonosyt-Servers (Standard: %(default)s)",
         )
 
+    # Every serve option can also come from an environment variable, so container
+    # managers such as Unraid can offer them as plain input fields.
+    env = os.environ.get
+
+    def env_list(name):
+        return [part.strip() for part in (env(name) or "").replace(";", ",").split(",") if part.strip()] or None
+
     p = sub.add_parser("serve", help="Server mit Web-Oberfläche starten")
-    p.add_argument("--host", default="0.0.0.0", help="Bind-Adresse (Standard: %(default)s)")
-    p.add_argument("--port", type=int, default=DEFAULT_PORT)
+    p.add_argument("--host", default=env("SONOSYT_HOST") or "0.0.0.0", help="Bind-Adresse (Standard: %(default)s)")
+    p.add_argument("--port", type=int, default=int(env("SONOSYT_PORT") or DEFAULT_PORT))
     p.add_argument(
         "--speaker-ip", action="append", metavar="IP",
-        help="Sonos-IP fest vorgeben statt automatischer Suche (mehrfach möglich)",
+        help="Sonos-IP fest vorgeben statt automatischer Suche (mehrfach möglich; "
+        "Umgebungsvariable SONOSYT_SPEAKER_IP, mehrere durch Komma getrennt)",
     )
     p.add_argument(
-        "--public-url", metavar="URL",
+        "--public-url", metavar="URL", default=env("SONOSYT_PUBLIC_URL") or None,
         help="Adresse, unter der die Lautsprecher diesen Server erreichen "
         "(Standard: automatisch, http://<LAN-IP>:<port>)",
     )
@@ -136,14 +144,14 @@ def main(argv: list[str] | None = None) -> int:
         help="zusätzlicher Hostname, unter dem der Server aufgerufen werden darf "
         "(IP-Adressen und lokale Namen wie tower.local sind immer erlaubt)",
     )
-    p.add_argument("--cache-dir", default=_default_cache_dir())
-    p.add_argument("--cache-size-mb", type=int, default=2048)
-    p.add_argument("--bitrate", default="192k", help="MP3-Bitrate (Standard: %(default)s)")
+    p.add_argument("--cache-dir", default=env("SONOSYT_CACHE_DIR") or _default_cache_dir())
+    p.add_argument("--cache-size-mb", type=int, default=int(env("SONOSYT_CACHE_SIZE_MB") or 2048))
+    p.add_argument("--bitrate", default=env("SONOSYT_BITRATE") or "192k", help="MP3-Bitrate (Standard: %(default)s)")
     p.add_argument(
         "--auto-update", action="store_true",
         help="yt-dlp beim Start und danach täglich per pip aktualisieren",
     )
-    p.set_defaults(func=cmd_serve)
+    p.set_defaults(func=lambda args: cmd_serve(args))
 
     p = sub.add_parser("speakers", help="Sonos-Lautsprecher auflisten")
     client(p)
@@ -164,4 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_control)
 
     args = parser.parse_args(argv)
+    if args.command == "serve":
+        args.speaker_ip = args.speaker_ip or env_list("SONOSYT_SPEAKER_IP")
+        args.allow_host = args.allow_host or env_list("SONOSYT_ALLOW_HOST")
     return args.func(args)

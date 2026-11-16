@@ -1,12 +1,19 @@
 package io.github.sonosyt;
 
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.Settings;
 import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.Gravity;
@@ -25,6 +32,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.Inet4Address;
@@ -70,6 +78,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        listenForDownloads();
         prefs = getSharedPreferences(PlaybackService.PREFS, MODE_PRIVATE);
 
         FrameLayout root = new FrameLayout(this);
@@ -98,9 +107,108 @@ public class MainActivity extends Activity {
         }
     }
 
+    // -- app updates ---------------------------------------------------------
+
+    /** Where new APKs are offered; nothing else is downloaded or installed. */
+    private static final String RELEASES = "https://github.com/dasistmeintemp-afk/sonosyt/releases/";
+    private static final String APK_TYPE = "application/vnd.android.package-archive";
+    private long updateDownload = -1;
+    private Uri pendingInstall;
+    private BroadcastReceiver downloadDone;
+
+    private void tellPage(String state) {
+        web.loadUrl("javascript:void(window.sonosytUpdateState&&sonosytUpdateState('" + state + "'))");
+    }
+
+    private void startUpdateDownload(String url) {
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        File folder = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+        if (manager == null || folder == null) {
+            tellPage("failed");
+            return;
+        }
+        new File(folder, "sonosyt-update.apk").delete(); // an older download would get a new name
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url))
+                .setTitle("sonosyt-Update")
+                .setDescription("Neue App-Version wird geladen")
+                .setMimeType(APK_TYPE)
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+                .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "sonosyt-update.apk");
+        updateDownload = manager.enqueue(request);
+        tellPage("downloading");
+    }
+
+    private void onDownloadComplete(long id) {
+        if (id != updateDownload) {
+            return;
+        }
+        updateDownload = -1;
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        boolean ok = false;
+        Cursor cursor = manager.query(new DownloadManager.Query().setFilterById(id));
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                int column = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                ok = column >= 0 && cursor.getInt(column) == DownloadManager.STATUS_SUCCESSFUL;
+            }
+            cursor.close();
+        }
+        Uri apk = ok ? manager.getUriForDownloadedFile(id) : null;
+        if (apk == null) {
+            tellPage("failed");
+            return;
+        }
+        install(apk);
+    }
+
+    private void install(Uri apk) {
+        if (!getPackageManager().canRequestPackageInstalls()) {
+            // Android asks once whether this app may install updates; continue in onResume.
+            pendingInstall = apk;
+            tellPage("permission");
+            startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName())));
+            return;
+        }
+        pendingInstall = null;
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(apk, APK_TYPE)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (Exception e) {
+            tellPage("failed");
+        }
+    }
+
+    private void listenForDownloads() {
+        downloadDone = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                onDownloadComplete(intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1));
+            }
+        };
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(downloadDone, filter, Context.RECEIVER_EXPORTED); // sent by the system
+        } else {
+            registerReceiver(downloadDone, filter);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (downloadDone != null) {
+            unregisterReceiver(downloadDone);
+        }
+        super.onDestroy();
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        if (pendingInstall != null && getPackageManager().canRequestPackageInstalls()) {
+            install(pendingInstall);
+        }
         web.onResume();
         startPlaybackService();
     }
@@ -150,6 +258,20 @@ public class MainActivity extends Activity {
                     } else {
                         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                     }
+                }
+            });
+        }
+
+        /** Downloads a new release of this app and opens Android's installer for it. */
+        @JavascriptInterface
+        public void installUpdate(final String url) {
+            if (url == null || !url.startsWith(RELEASES) || !url.endsWith(".apk")) {
+                return;
+            }
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    startUpdateDownload(url);
                 }
             });
         }

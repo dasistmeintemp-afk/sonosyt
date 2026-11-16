@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>sonosyt</Name>
+  <Repository>ghcr.io/dasistmeintemp-afk/sonosyt:latest</Repository>
+  <Registry>https://github.com/dasistmeintemp-afk/sonosyt/pkgs/container/sonosyt</Registry>
+  <Network>host</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/dasistmeintemp-afk/sonosyt/issues</Support>
+  <Project>https://github.com/dasistmeintemp-afk/sonosyt</Project>
+  <Overview>Spielt den Ton von YouTube-Videos auf Sonos-Lautsprechern – als Ergänzung zur Sonos-App. Mit Web-Oberfläche und Android-App. Läuft im Host-Netzwerk, damit es die Lautsprecher findet und diese die Musik abholen können.</Overview>
+  <Category>MediaServer:Music</Category>
+  <WebUI>http://[IP]:[PORT:8327]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/dasistmeintemp-afk/sonosyt/ccr-1d7e2f0e-vpigs0/unraid/sonosyt.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/dasistmeintemp-afk/sonosyt/ccr-1d7e2f0e-vpigs0/unraid/icon.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <Config Name="Daten" Target="/cache" Default="/mnt/user/appdata/sonosyt-cache" Mode="rw" Description="Favoriten, Playlists, Wecker und umgewandelte Titel. Bei einem Umstieg vom selbst gebauten Container denselben Ordner wie bisher angeben, dann bleibt alles erhalten." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/sonosyt-cache</Config>
+  <Config Name="Sonos-Lautsprecher (IP)" Target="SONOSYT_SPEAKER_IP" Default="" Mode="" Description="IP-Adresse eines Sonos-Lautsprechers, falls die automatische Suche nichts findet (z. B. wenn die Lautsprecher in einem anderen VLAN sind). Die übrigen Räume werden darüber gefunden. Leer lassen für automatische Suche." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Port" Target="SONOSYT_PORT" Default="8327" Mode="" Description="Port der Web-Oberfläche und der Musik-Streams. Die Firewall muss den Lautsprechern den Zugriff darauf erlauben." Type="Variable" Display="always" Required="false" Mask="false">8327</Config>
+  <Config Name="Zusätzlicher Hostname" Target="SONOSYT_ALLOW_HOST" Default="" Mode="" Description="Nur nötig, wenn du sonosyt über einen eigenen Domainnamen aufrufst. IP-Adressen und Namen wie tower.local funktionieren immer." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Öffentliche Adresse" Target="SONOSYT_PUBLIC_URL" Default="" Mode="" Description="Adresse, unter der die Lautsprecher den Server erreichen, falls die automatische Erkennung nicht passt, z. B. http://192.168.1.49:8327" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MP3-Bitrate" Target="SONOSYT_BITRATE" Default="192k" Mode="" Description="Qualität der umgewandelten Titel." Type="Variable" Display="advanced" Required="false" Mask="false">192k</Config>
+  <Config Name="Zwischenspeicher (MB)" Target="SONOSYT_CACHE_SIZE_MB" Default="2048" Mode="" Description="Höchstgröße des Zwischenspeichers für umgewandelte Titel." Type="Variable" Display="advanced" Required="false" Mask="false">2048</Config>
+</Container>

@@ -19,16 +19,33 @@ wandelt sie mit ffmpeg in MP3 um und reicht sie den Lautsprechern über HTTP. Ge
 
 Der Server muss **im selben Netzwerk wie die Sonos-Lautsprecher** laufen, solange Musik spielt.
 
-### Auf einem NAS mit Docker (empfohlen)
+### Unraid (empfohlen)
+
+sonosyt gibt es als fertiges Image (`ghcr.io/dasistmeintemp-afk/sonosyt`). Unraid zeigt damit im
+Docker-Tab wie bei anderen Apps an, wenn ein Update bereitsteht, und aktualisiert mit einem Klick.
+
+1. Vorlage einmalig herunterladen (im Unraid-Terminal):
+   ```sh
+   wget -O /boot/config/plugins/dockerMan/templates-user/my-sonosyt.xml \
+     https://raw.githubusercontent.com/dasistmeintemp-afk/sonosyt/ccr-1d7e2f0e-vpigs0/unraid/sonosyt.xml
+   ```
+2. **Docker → Add Container**, oben bei *Template* „sonosyt" wählen.
+3. Bei **Sonos-Lautsprecher (IP)** die Adresse eines Lautsprechers eintragen, falls die Lautsprecher
+   in einem anderen VLAN sind; sonst leer lassen. **Apply**.
+
+Danach: Symbol im Docker-Tab → **WebUI** öffnet die Oberfläche. Steht dort „update ready",
+genügt **Apply Update**. Mit dem Plugin „CA Auto Update Applications" geht das auch automatisch.
+
+### Anderes NAS mit Docker
 
 ```sh
-git clone https://github.com/dasistmeintemp-afk/sonosyt.git
-cd sonosyt
-docker compose up -d --build
+docker run -d --name sonosyt --restart unless-stopped --network host \
+  -v /pfad/zu/sonosyt-daten:/cache \
+  -e SONOSYT_SPEAKER_IP=192.168.1.50 \
+  ghcr.io/dasistmeintemp-afk/sonosyt:latest
 ```
 
-Der Container nutzt das Host-Netzwerk (nötig für die Sonos-Suche) und startet nach einem
-Neustart des NAS von selbst wieder. Aktualisieren: `git pull && docker compose up -d --build`.
+Oder aus dem Quellcode: `docker compose up -d --build` im geklonten Repository.
 
 ### Direkt mit Python
 
@@ -135,7 +152,7 @@ sehen, überspringen und pausieren.
 
 | Option | Bedeutung |
 | --- | --- |
-| `--port 8327` | Port des Servers |
+| `--port 8327` | Port des Servers (alle Optionen gehen auch als Umgebungsvariable, z. B. `SONOSYT_PORT`, `SONOSYT_SPEAKER_IP`, `SONOSYT_PUBLIC_URL`, `SONOSYT_BITRATE`) |
 | `--speaker-ip IP` | Adresse eines beliebigen Sonos-Lautsprechers vorgeben, falls die automatische Suche nichts findet (z. B. Lautsprecher in einem anderen VLAN); die übrigen Räume werden darüber gefunden |
 | `--public-url URL` | Adresse, unter der die Lautsprecher den Server erreichen, falls die automatische Erkennung nicht passt |
 | `--cache-dir`, `--cache-size-mb 2048` | Ort und Maximalgröße des MP3-Zwischenspeichers |
@@ -155,7 +172,9 @@ sehen, überspringen und pausieren.
 
 ## Aktualisieren
 
-**Server:** ein Befehl im Ordner des Repositorys. Er holt den neuen Stand, baut das Image und
+**Server auf Unraid:** über den Docker-Tab („Apply Update"), siehe oben.
+
+**Server aus dem Quellcode:** ein Befehl im Ordner des Repositorys. Er holt den neuen Stand, baut das Image und
 startet den Container mit denselben Optionen und demselben Cache wie zuvor:
 
 ```sh
@@ -167,7 +186,8 @@ ohne neue APK. Wer es automatisch möchte, lässt den Befehl regelmäßig laufen
 mit dem Plugin „User Scripts").
 
 **App:** Eine neue APK ist nur nötig, wenn sich an der App selbst etwas ändert. Die App zeigt
-dann einen Hinweis mit Download-Knopf. Vollautomatisch geht es mit
+dann oben „Neue App-Version verfügbar"; **Aktualisieren** lädt sie und öffnet direkt die
+Installation (beim ersten Mal fragt Android, ob sonosyt Apps installieren darf). Vollautomatisch geht es mit
 [Obtainium](https://github.com/ImranR98/Obtainium): dort die Adresse dieses Repositorys
 eintragen, dann installiert Obtainium neue Versionen von selbst.
 
