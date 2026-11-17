@@ -68,3 +68,34 @@ class YtDlpTools:
 
     def ytdlp_version(self) -> str:
         return ytdlp_version()
+
+    def latest_server_version(self) -> str | None:
+        return latest_server_version()
+
+
+# The published server image. Its tags are the release versions (0.2.<build>).
+IMAGE = "dasistmeintemp-afk/sonosyt"
+
+
+def latest_server_version(image: str = IMAGE, opener=None) -> str | None:
+    """The newest version of the server image on ghcr.io, or None if unknown.
+
+    Anonymous, as Docker itself does it: a pull token first, then the tag list.
+    """
+    import json
+    import re
+    import urllib.request
+
+    opener = opener or (lambda req: urllib.request.urlopen(req, timeout=10))
+    try:
+        with opener(f"https://ghcr.io/token?scope=repository:{image}:pull") as resp:
+            token = json.loads(resp.read())["token"]
+        req = urllib.request.Request(f"https://ghcr.io/v2/{image}/tags/list?n=1000",
+                                     headers={"Authorization": f"Bearer {token}"})
+        with opener(req) as resp:
+            tags = json.loads(resp.read()).get("tags") or []
+    except (OSError, ValueError, KeyError) as exc:
+        log.info("update check failed: %s", exc)
+        return None
+    versions = [t for t in tags if re.fullmatch(r"\d+\.\d+\.\d+", t)]
+    return max(versions, key=lambda v: tuple(int(x) for x in v.split(".")), default=None)

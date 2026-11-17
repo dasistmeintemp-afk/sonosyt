@@ -102,8 +102,13 @@ class FakeNetwork:
 
 
 class FakeTools:
+    latest = None
+
     def ytdlp_version(self):
         return "2026.01.01"
+
+    def latest_server_version(self):
+        return self.latest
 
 
 class FakeLyrics:
@@ -669,3 +674,15 @@ def test_charts_on_the_start_screen(srv):
     data = json.loads(body)
     assert status == 200 and data["title"] == "Top-Songs Deutschland"
     assert data["items"][0]["rank"] == 1 and data["items"][0]["query"] == "Chan - Song"
+
+
+def test_server_update_check(srv):
+    base, env, _ = srv
+    tools = env.app.system.tools
+    env.app.system.version = "0.2.24"
+    tools.latest = "0.2.30"
+    assert json.loads(call(base + "/api/update")[2]) == {"current": "0.2.24", "latest": "0.2.30", "newer": True}
+    tools.latest = "0.2.9"
+    assert json.loads(call(base + "/api/update")[2])["newer"] is False  # numbers, not text
+    tools.latest = None
+    assert json.loads(call(base + "/api/update")[2])["newer"] is False

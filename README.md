@@ -194,6 +194,10 @@ sehen, überspringen und pausieren.
 
 **Server auf Unraid:** über den Docker-Tab („Apply Update"), siehe oben.
 
+**Prüfen, ob es Neues gibt:** In der App unter Einstellungen → „Nach Updates suchen“. Dort
+stehen die installierte und die neueste Version von App und Server; eine neue App installiert
+sich mit „Aktualisieren“ direkt.
+
 **Server aus dem Quellcode:** ein Befehl im Ordner des Repositorys. Er holt den neuen Stand, baut das Image und
 startet den Container mit denselben Optionen und demselben Cache wie zuvor:
 

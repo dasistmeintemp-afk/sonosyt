@@ -11,6 +11,12 @@ from .playback import PlaybackService
 from .ports import AudioConverter, Network, SpeakerSystem, Thumbnails, Tools, VideoFeed
 
 
+def version_key(version: str) -> tuple:
+    """"0.2.25" -> (0, 2, 25); anything else (a local build) counts as oldest."""
+    parts = str(version).split(".")
+    return tuple(int(p) for p in parts) if all(p.isdigit() for p in parts) else ()
+
+
 class StreamingService:
     """What the speakers fetch. Also notes who fetched, for the connection check."""
 
@@ -71,6 +77,12 @@ class SystemService:
         if not self._ytdlp or now - self._ytdlp[0] > 600:  # asking yt-dlp takes a moment
             self._ytdlp = (now, self.tools.ytdlp_version())
         return {"version": self.version, "ytdlp": self._ytdlp[1], "cache": self.converter.cache_info()}
+
+    def check_update(self) -> dict:
+        """Is a newer server published? (Installing it is Unraid's or Docker's job.)"""
+        latest = self.tools.latest_server_version()
+        return {"current": self.version, "latest": latest,
+                "newer": bool(latest) and version_key(latest) > version_key(self.version)}
 
     def clear_cache(self) -> dict:
         removed = self.converter.clear_cache()

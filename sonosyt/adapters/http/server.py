@@ -74,6 +74,7 @@ def get_routes(app: Application) -> dict:
         "/api/charts": lambda q: app.charts.get(),
         "/api/lyrics": lambda q: app.lyrics.get(app.tracks.track(_q(q, "id"))),
         "/api/info": lambda q: app.system.info(),
+        "/api/update": lambda q: app.system.check_update(),
         "/api/diagnose": lambda q: app.system.diagnose(_q(q, "speaker")),
     }
 

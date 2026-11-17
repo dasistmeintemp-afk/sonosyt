@@ -137,3 +137,4 @@ class Network(Protocol):
 
 class Tools(Protocol):
     def ytdlp_version(self) -> str: ...
+    def latest_server_version(self) -> str | None: ...  # newest published server, None if unknown
