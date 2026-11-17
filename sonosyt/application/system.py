@@ -5,17 +5,19 @@ from __future__ import annotations
 import threading
 import time
 
+from ..domain.errors import MediaError
 from ..domain.track import Track, watch_id
 from .playback import PlaybackService
-from .ports import AudioConverter, Network, SpeakerSystem, Thumbnails, Tools
+from .ports import AudioConverter, Network, SpeakerSystem, Thumbnails, Tools, VideoFeed
 
 
 class StreamingService:
     """What the speakers fetch. Also notes who fetched, for the connection check."""
 
-    def __init__(self, converter: AudioConverter, thumbnails: Thumbnails):
+    def __init__(self, converter: AudioConverter, thumbnails: Thumbnails, video: VideoFeed | None = None):
         self.converter = converter
         self.thumbnails = thumbnails
+        self.video_feed = video
         self._fetches: dict[str, float] = {}  # client address -> last audio request
         self._lock = threading.Lock()
 
@@ -37,6 +39,16 @@ class StreamingService:
 
     def live(self, video_id: str):
         return self.converter.live(watch_id(video_id))
+
+    def video(self, video_id: str, start: int = 0, end: int | None = None):
+        """A piece of the silent video the phone shows while Sonos plays the sound."""
+        if self.video_feed is None:
+            raise MediaError("Kein Videostream verfügbar.")
+        return self.video_feed.open(watch_id(video_id), max(0, start), end)
+
+    def warm_video(self, video_id: str) -> None:
+        if self.video_feed is not None:
+            self.video_feed.warm(watch_id(video_id))
 
     def cover(self, video_id: str) -> bytes:
         return self.thumbnails.get(watch_id(video_id))

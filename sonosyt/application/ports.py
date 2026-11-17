@@ -7,6 +7,7 @@ a JSON file, LRCLIB and the local network; tests implement them with fakes.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Protocol
 
@@ -39,6 +40,24 @@ class VideoCatalog(Protocol):
     def related(self, video_id: str) -> list[Track]: ...
     def suggest(self, query: str) -> list[str]: ...
     def thumbnail(self, video_id: str) -> bytes: ...
+
+
+@dataclass
+class VideoPiece:
+    """Bytes ``start``..``end`` (inclusive) of a video file of ``size`` bytes (None if unknown)."""
+
+    start: int
+    end: int
+    size: int | None
+    content_type: str
+    chunks: Iterator[bytes]
+
+
+class VideoFeed(Protocol):
+    """The picture of a video (no sound) for the phone, in pieces. Failures raise MediaError."""
+
+    def warm(self, video_id: str) -> None: ...  # look it up now, so playback starts quickly
+    def open(self, video_id: str, start: int, end: int | None) -> VideoPiece: ...
 
 
 class ConversionJob(Protocol):

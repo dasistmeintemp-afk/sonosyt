@@ -24,6 +24,7 @@ log = logging.getLogger(__name__)
 
 THUMB_RE = re.compile(r"^/thumb/([A-Za-z0-9_-]{11})\.jpg$")
 STREAM_RE = re.compile(r"^/(stream|live)/([A-Za-z0-9_-]{11})\.mp3$")
+VIDEO_RE = re.compile(r"^/video/([A-Za-z0-9_-]{11})\.mp4$")
 MAX_BODY = 64 * 1024
 
 # Host names a browser may use for this server. Anything else is refused, so a
@@ -200,6 +201,9 @@ class Handler(BaseHTTPRequestHandler):
         m = THUMB_RE.match(url.path)
         if m:
             return self._thumb(m.group(1))
+        m = VIDEO_RE.match(url.path)
+        if m:
+            return self._video(m.group(1))
         m = STREAM_RE.match(url.path)
         if m:
             self.app.streaming.note_fetch(self.client_address[0])
@@ -248,6 +252,54 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(data)
+
+    # -- video for the phone -----------------------------------------------
+
+    def _video(self, video_id: str) -> None:
+        """The silent picture, relayed from YouTube in pieces (always 206 Partial Content).
+
+        HEAD only looks the video up, so a later GET starts at once.
+        """
+        streaming = self.app.streaming
+        try:
+            if self.command == "HEAD":
+                streaming.warm_video(video_id)
+                self.send_response(200)
+                self.send_header("Accept-Ranges", "bytes")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            start, end = 0, None
+            m = re.match(r"^bytes=(\d+)-(\d*)$", (self.headers.get("Range") or "").strip())
+            if m:
+                start = int(m.group(1))
+                end = int(m.group(2)) if m.group(2) else None
+            piece = streaming.video(video_id, start, end)
+        except ValueError:
+            self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        except MediaError as exc:
+            return self._error(502, str(exc))
+        except (BrokenPipeError, ConnectionResetError):
+            return
+        try:
+            self.send_response(HTTPStatus.PARTIAL_CONTENT)
+            self.send_header("Content-Type", piece.content_type)
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Length", str(piece.end - piece.start + 1))
+            self.send_header("Content-Range", f"bytes {piece.start}-{piece.end}/{piece.size or '*'}")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            for chunk in piece.chunks:
+                self.wfile.write(chunk)
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # the phone skipped ahead or closed the player
+        finally:
+            close = getattr(piece.chunks, "close", None)
+            if close:
+                close()
 
     # -- audio -------------------------------------------------------------
 

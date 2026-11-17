@@ -88,7 +88,10 @@ Danach:
   Titel vor/zurück. Läuft 15 Minuten nichts, verschwindet die Benachrichtigung wieder.
 - **Große Wiedergabe-Ansicht:** Ein Tipp auf den laufenden Titel unten öffnet sie – mit Spulen,
   Lautstärke, Favorit, ähnlichen Titeln und Playlist. Dort läuft das Video stumm und synchron
-  zum Ton der Lautsprecher mit (bei Videos, die YouTube nicht einbetten lässt, bleibt das Cover).
+  zum Ton der Lautsprecher mit – bei **jedem** Video, auch bei Musikvideos, die YouTube nicht
+  einbetten lässt: Das Bild kommt über deinen Server. Bild und Ton liegen auf Bruchteile einer
+  Sekunde beieinander; wer es noch genauer will, stellt unter Einstellungen → Video-Versatz nach.
+  **Handy quer halten** zeigt das Video im ganzen Bildschirm, ein Tipp blendet die Steuerung ein.
 - **Unten:** Spulen, Pause, Titel vor/zurück, Lautstärke und die Warteschlange (Titel am
   Griff rechts verschieben, antippen zum Springen). Dort gibt es
   auch Zufall, Wiederholen, Autoplay (nach dem letzten Titel läuft passende Musik weiter)
@@ -176,6 +179,10 @@ sehen, überspringen und pausieren.
    wenigen Sekunden), bekommt Sonos eine vollständige Datei – mit Laufzeit und Spulen.
    Andernfalls wird die noch wachsende Datei live durchgereicht; Spulen geht dann erst beim
    nächsten Abspielen.
+3. Das Bild für die große Wiedergabe-Ansicht holt die App unter `/video/<video-id>.mp4`: yt-dlp
+   sucht einen Videostream ohne Ton (bis 720p) und der Server reicht ihn stückweise durch. Weil
+   Sonos die Position nur in ganzen Sekunden meldet, schätzt die App aus mehreren Meldungen den
+   genauen Startzeitpunkt und gleicht kleine Abweichungen über die Abspielgeschwindigkeit aus.
 
 ## Aktualisieren
 
@@ -244,6 +251,7 @@ sonosyt/
   adapters/        Technik an den Rändern
     sonos.py         SoCo                    → SpeakerSystem
     youtube.py       yt-dlp                  → VideoCatalog
+    videofeed.py     yt-dlp + HTTP           → VideoFeed (Bild fürs Handy)
     transcoder.py    yt-dlp + ffmpeg         → AudioConverter
     json_library.py  JSON-Datei              → LibraryRepository
     lrclib.py, thumbnails.py, network.py, updater.py

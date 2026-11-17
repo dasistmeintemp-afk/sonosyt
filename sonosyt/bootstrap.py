@@ -42,6 +42,7 @@ def build(
     network=None,
     tools=None,
     thumbnails=None,
+    video_feed=None,
 ) -> Application:
     cache_dir = Path(cache_dir)
     if speakers is None:
@@ -83,6 +84,11 @@ def build(
 
         thumbnails = DiskThumbnailCache(cache_dir / "thumbs", lambda vid: catalog.thumbnail(vid))
 
+    if video_feed is None:
+        from .adapters.videofeed import YouTubeVideoFeed
+
+        video_feed = YouTubeVideoFeed()
+
     tracks = TrackCatalog(catalog, converter, library)
     playback = PlaybackService(speakers, converter, tracks, library, network,
                                port=port, public_url=public_url, prefetch_wait=prefetch_wait)
@@ -90,7 +96,7 @@ def build(
     sources = SourcePlayer(library, speakers, playback)
     alarms = AlarmService(library, speakers, playback, rooms, sources)
     autoplay = AutoplayService(speakers, tracks, library, playback)
-    streaming = StreamingService(converter, thumbnails)
+    streaming = StreamingService(converter, thumbnails, video_feed)
     return Application(
         tracks=tracks,
         playback=playback,

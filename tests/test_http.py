@@ -620,3 +620,41 @@ def test_presets_group_rooms_set_volume_and_play(srv):
     assert Library(app.repo.path).presets()[0]["name"] == "Abendessen"  # survives a restart
     assert json.loads(call(base + "/api/presets", {"op": "delete", "id": saved[0]["id"]})[2]) == []
     assert call(base + "/api/presets", {"op": "run", "id": saved[0]["id"]})[0] == 400
+
+
+def test_video_for_the_phone_is_relayed_in_pieces(srv):
+    from sonosyt.application.ports import VideoPiece
+
+    base, env, _ = srv
+    app = env.app
+    data = bytes(range(200))
+    seen = []
+
+    class Feed:
+        def warm(self, vid):
+            seen.append(("warm", vid))
+
+        def open(self, vid, start, end):
+            seen.append((vid, start, end))
+            if start >= len(data):
+                raise ValueError("out of range")
+            last = min(len(data) - 1, end if end is not None else start + 49)
+            return VideoPiece(start, last, len(data), "video/mp4", iter([data[start:last + 1]]))
+
+    app.streaming.video_feed = Feed()
+    status, headers, body = call(base + f"/video/{VID}.mp4", headers={"Range": "bytes=10-"})
+    assert status == 206 and body == data[10:60]
+    assert headers["Content-Range"] == "bytes 10-59/200" and headers["Content-Type"] == "video/mp4"
+    status, _, body = call(base + f"/video/{VID}.mp4")
+    assert status == 206 and body == data[:50]
+    assert call(base + f"/video/{VID}.mp4", headers={"Range": "bytes=500-"})[0] == 416
+    assert call(base + f"/video/{VID}.mp4", method="HEAD")[0] == 200
+    assert ("warm", VID) in seen and (VID, 10, None) in seen
+    assert call(base + "/video/../../etc.mp4")[0] == 404
+
+    def broken(vid, start, end):
+        raise MediaError("Video nicht verfügbar")
+
+    app.streaming.video_feed.open = broken
+    status, _, body = call(base + f"/video/{VID}.mp4")
+    assert status == 502 and "nicht verfügbar" in json.loads(body)["error"]
