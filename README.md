@@ -109,6 +109,12 @@ Danach:
 - **Voreinstellungen** (oben auf „Start"): Musik, Räume und Lautstärke zusammen speichern und mit
   einem Tipp starten – der erste Raum spielt, die anderen werden dazugeschaltet. Lange drücken
   bearbeitet eine Voreinstellung.
+- **Charts** (auf „Start"): die aktuell meistgehörten Songs (Deutschland, täglich aktuell) als
+  Leiste mit Platzierung – ein Tipp spielt den Song, „Alle" die ganze Liste. Der Server sucht
+  jeden Song auf YouTube und bevorzugt dabei das offizielle Video bzw. den Song selbst statt
+  Live-Mitschnitten, Mixen oder Karaoke. Die Liste stammt aus dem öffentlichen Charts-Feed von
+  Apple Music (YouTube hat seine Trends-Seite 2025 abgeschafft); das Land lässt sich mit
+  `SONOSYT_CHARTS_COUNTRY` (z. B. `at`, `ch`) ändern.
 - **Sonos-Favoriten:** Radiosender und Playlists aus der Sonos-App erscheinen auf „Start" und
   starten mit einem Tipp.
 - **Songtexte** (Knopf „Songtext" in der großen Wiedergabe-Ansicht) kommen von
@@ -162,7 +168,7 @@ sehen, überspringen und pausieren.
 
 | Option | Bedeutung |
 | --- | --- |
-| `--port 8327` | Port des Servers (alle Optionen gehen auch als Umgebungsvariable, z. B. `SONOSYT_PORT`, `SONOSYT_SPEAKER_IP`, `SONOSYT_PUBLIC_URL`, `SONOSYT_BITRATE`) |
+| `--port 8327` | Port des Servers (alle Optionen gehen auch als Umgebungsvariable, z. B. `SONOSYT_PORT`, `SONOSYT_SPEAKER_IP`, `SONOSYT_PUBLIC_URL`, `SONOSYT_BITRATE`, `SONOSYT_CHARTS_COUNTRY`) |
 | `--speaker-ip IP` | Adresse eines beliebigen Sonos-Lautsprechers vorgeben, falls die automatische Suche nichts findet (z. B. Lautsprecher in einem anderen VLAN); die übrigen Räume werden darüber gefunden |
 | `--public-url URL` | Adresse, unter der die Lautsprecher den Server erreichen, falls die automatische Erkennung nicht passt |
 | `--cache-dir`, `--cache-size-mb 2048` | Ort und Maximalgröße des MP3-Zwischenspeichers |
@@ -252,6 +258,7 @@ sonosyt/
     sonos.py         SoCo                    → SpeakerSystem
     youtube.py       yt-dlp                  → VideoCatalog
     videofeed.py     yt-dlp + HTTP           → VideoFeed (Bild fürs Handy)
+    apple_charts.py  Apple-Charts-Feed       → ChartSource
     transcoder.py    yt-dlp + ffmpeg         → AudioConverter
     json_library.py  JSON-Datei              → LibraryRepository
     lrclib.py, thumbnails.py, network.py, updater.py

@@ -112,6 +112,12 @@ class LibraryRepository(Protocol):
     def set_autoplay(self, speaker: str, on: bool) -> None: ...
 
 
+class ChartSource(Protocol):
+    """Current hit lists: [{"title", "artist", "art"}], best first. Failures raise MediaError."""
+
+    def top_songs(self, country: str, limit: int) -> list[dict]: ...
+
+
 class LyricsSource(Protocol):
     """A lyrics database. Returns candidate entries; may raise on network trouble."""
 

@@ -14,6 +14,7 @@ from . import __version__
 from .application.alarms import AlarmService
 from .application.app import Application
 from .application.background import AutoplayService, Monitor
+from .application.charts import ChartService
 from .application.library import LibraryService
 from .application.lyrics import LyricsService
 from .application.playback import PlaybackService
@@ -43,6 +44,8 @@ def build(
     tools=None,
     thumbnails=None,
     video_feed=None,
+    chart_source=None,
+    charts_country: str = "de",
 ) -> Application:
     cache_dir = Path(cache_dir)
     if speakers is None:
@@ -89,6 +92,11 @@ def build(
 
         video_feed = YouTubeVideoFeed()
 
+    if chart_source is None:
+        from .adapters.apple_charts import AppleCharts
+
+        chart_source = AppleCharts()
+
     tracks = TrackCatalog(catalog, converter, library)
     playback = PlaybackService(speakers, converter, tracks, library, network,
                                port=port, public_url=public_url, prefetch_wait=prefetch_wait)
@@ -109,6 +117,7 @@ def build(
         monitor=Monitor(speakers, converter, library, playback, autoplay, alarms),
         streaming=streaming,
         system=SystemService(__version__, speakers, converter, network, tools, playback, streaming),
+        charts=ChartService(chart_source, tracks, charts_country),
     )
 
 

@@ -658,3 +658,14 @@ def test_video_for_the_phone_is_relayed_in_pieces(srv):
     app.streaming.video_feed.open = broken
     status, _, body = call(base + f"/video/{VID}.mp4")
     assert status == 502 and "nicht verfügbar" in json.loads(body)["error"]
+
+
+def test_charts_on_the_start_screen(srv):
+    base, env, _ = srv
+    app = env.app
+    app.charts.source = type("S", (), {"top_songs": lambda self, c, n: [{"title": "Song", "artist": "Chan", "art": ""}]})()
+    app.charts.background = False
+    status, _, body = call(base + "/api/charts")
+    data = json.loads(body)
+    assert status == 200 and data["title"] == "Top-Songs Deutschland"
+    assert data["items"][0]["rank"] == 1 and data["items"][0]["query"] == "Chan - Song"

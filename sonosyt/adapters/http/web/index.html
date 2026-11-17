@@ -99,6 +99,11 @@
                  color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden;
                  text-overflow: ellipsis; }
   .label .tools { display: flex; gap: 8px; }
+  .label .tools .pill { font-size: .875rem; height: 34px; padding: 0 14px; gap: 6px; align-self: center; }
+  .label .tools .pill svg { width: 16px; height: 16px; }
+  .rank { position: absolute; left: 8px; bottom: 6px; z-index: 1; font-size: 1.75rem; font-weight: 850;
+          line-height: 1; color: #fff; letter-spacing: -.04em; text-shadow: 0 2px 10px rgba(0, 0, 0, .55); }
+  .chart-card.waiting .thumb { opacity: .85; }
   .sheet .label { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
                   color: var(--muted); margin: 22px 0 6px; }
   .hint { color: var(--muted); text-align: center; padding: 40px 16px; line-height: 1.55; }
@@ -726,6 +731,11 @@
     <div id="forYouBox" hidden>
       <div class="label"><span>Für dich<small id="forYouWhy"></small></span></div>
       <ul class="tracklist rail" id="forYou"></ul>
+    </div>
+    <div id="chartBox" hidden>
+      <div class="label"><span><span id="chartTitle">Charts</span><small>Was gerade am meisten gehört wird</small></span>
+        <span class="tools"><button class="pill" id="chartPlay"><svg><use href="#i-play"/></svg>Alle</button></span></div>
+      <ul class="tracklist rail" id="charts"></ul>
     </div>
     <div id="favBox" hidden>
       <div class="label"><button class="label-link" data-lib-link="favorites">Favoriten<svg><use href="#i-chev"/></svg></button></div>
@@ -1499,6 +1509,76 @@ function renderForYou() {
   markCurrent();
 }
 
+// ---- charts: what is played most right now, found on YouTube by the server ----
+
+let charts = {items: [], at: 0, polls: 0};
+async function loadCharts(force) {
+  if (!force && Date.now() - charts.at < 30 * 60 * 1000 && !charts.items.some((i) => i.pending)) return renderCharts();
+  try {
+    const data = await api('/api/charts');
+    charts = {...data, at: Date.now(), polls: force ? charts.polls + 1 : 0};
+  } catch (e) { /* the rail just stays hidden */ }
+  renderCharts();
+  // the server is still looking songs up: come back for them a little later
+  if (charts.items.slice(0, 12).some((i) => i.pending) && charts.polls < 12) {
+    setTimeout(() => { if (view.kind === 'home' && !document.hidden) loadCharts(true); }, 6000);
+  }
+}
+
+function chartCard(item) {
+  let li;
+  if (item.track) {
+    li = trackCard(item.track);
+    li.querySelector('.meta .title').textContent = item.title;
+    li.querySelector('.meta .sub').textContent = item.artist;
+  } else {   // not on YouTube yet: a tap searches for it
+    li = el('li', 'track card waiting');
+    const main = el('button', 'main');
+    main.setAttribute('aria-label', `${item.title} von ${item.artist} abspielen`);
+    const thumb = el('div', 'thumb');
+    if (item.art) { const img = el('img'); img.src = item.art; img.alt = ''; img.loading = 'lazy'; img.onerror = () => img.remove(); thumb.append(img); }
+    thumb.append(el('div', 'veil'));
+    main.append(thumb);
+    main.onclick = () => playQuery(item.query, li);
+    const foot = el('div', 'foot');
+    const meta = el('div', 'meta');
+    meta.append(el('div', 'title', item.title), el('div', 'sub', item.artist));
+    foot.append(meta);
+    li.append(main, foot);
+  }
+  li.classList.add('chart-card');
+  li.querySelector('.thumb').append(el('span', 'rank', String(item.rank)));
+  return li;
+}
+
+function renderCharts() {
+  const items = (charts.items || []).slice(0, 20);
+  $('chartBox').hidden = !items.length;
+  $('chartTitle').textContent = charts.title || 'Charts';
+  $('charts').replaceChildren(...items.map(chartCard));
+  $('chartPlay').disabled = !items.some((i) => i.track);
+  if (items.length) $('welcome').hidden = true;
+  markCurrent();
+}
+
+async function playQuery(query, row) {
+  if (!speaker()) return toast('Kein Lautsprecher ausgewählt.', true);
+  if (row) row.classList.add('busy');
+  buzz();
+  try {
+    await api('/api/play', {speaker: speaker(), query, mode: settings.tap === 'queue' ? 'queue' : 'now'});
+    toast(settings.tap === 'queue' ? 'Zur Warteschlange hinzugefügt' : `Spielt in ${speaker()}`);
+  } catch (e) { toast(e.message, true); }
+  if (row) row.classList.remove('busy');
+  loadLibrary();
+  refreshStatus();
+}
+
+$('chartPlay').onclick = () => {
+  const ids = (charts.items || []).filter((i) => i.track).map((i) => i.track.id);
+  play(ids, 'now');
+};
+
 function renderHome() {
   $('greeting').textContent = greeting();
   const seen = new Set();
@@ -1514,8 +1594,9 @@ function renderHome() {
   $('histBox').hidden = !history.length;
   $('history').replaceChildren(...history.map(trackCard));
   $('welcome').hidden = library.favorites.length > 0 || library.history.length > 0
-    || library.playlists.length > 0;
+    || library.playlists.length > 0 || !$('chartBox').hidden;
   loadForYou();
+  loadCharts(false);
 
   const recent = store('recent') || [];
   $('recentBox').hidden = !recent.length;

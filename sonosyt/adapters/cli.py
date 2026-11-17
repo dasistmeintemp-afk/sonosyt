@@ -56,6 +56,7 @@ def cmd_serve(args) -> int:
         bitrate=args.bitrate,
         cache_size_mb=args.cache_size_mb,
         auto_update=args.auto_update,
+        charts_country=args.charts_country,
     )
     server = make_server(app, args.host, args.port, args.allow_host, args.public_url)
     app.monitor.start()
@@ -148,6 +149,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--cache-dir", default=env("SONOSYT_CACHE_DIR") or _default_cache_dir())
     p.add_argument("--cache-size-mb", type=int, default=int(env("SONOSYT_CACHE_SIZE_MB") or 2048))
     p.add_argument("--bitrate", default=env("SONOSYT_BITRATE") or "192k", help="MP3-Bitrate (Standard: %(default)s)")
+    p.add_argument(
+        "--charts-country", default=env("SONOSYT_CHARTS_COUNTRY") or "de", metavar="LAND",
+        help="Land der Charts auf der Startseite, z. B. de, at, ch (Standard: %(default)s)",
+    )
     p.add_argument(
         "--auto-update", action="store_true",
         help="yt-dlp beim Start und danach täglich per pip aktualisieren",

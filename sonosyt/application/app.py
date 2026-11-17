@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from .alarms import AlarmService
 from .background import AutoplayService, Monitor
+from .charts import ChartService
 from .library import LibraryService
 from .lyrics import LyricsService
 from .playback import PlaybackService
@@ -28,3 +29,4 @@ class Application:
     monitor: Monitor
     streaming: StreamingService
     system: SystemService
+    charts: ChartService
