@@ -529,14 +529,9 @@ def test_thumbnails_are_served_from_our_origin_and_cached(srv):
     assert call(base + f"/thumb/{VID}.jpg")[0] == 200  # cached copy still served offline
 
 
-def test_sonos_favourites_and_crossfade(srv):
+def test_crossfade_and_no_sonos_favourites(srv):
     base, app, sonos = srv
-    sonos.favorites = lambda speaker: [{"index": 0, "title": "Radio Eins", "art": "", "kind": "Radiosender"}]
-    played = []
-    sonos.play_favorite = lambda speaker, index: played.append((speaker, index)) or "Radio Eins"
-    assert json.loads(call(base + "/api/sonosfav?speaker=K%C3%BCche")[2])[0]["title"] == "Radio Eins"
-    status, _, body = call(base + "/api/sonosfav/play", {"speaker": "Küche", "index": 0})
-    assert status == 200 and json.loads(body) == {"title": "Radio Eins"} and played == [("Küche", 0)]
+    assert call(base + "/api/sonosfav?speaker=K%C3%BCche")[0] == 404
     assert call(base + "/api/control", {"speaker": "Küche", "action": "crossfade", "value": 1})[0] == 200
     assert sonos.controls[-1] == ("Küche", "crossfade", 1)
 

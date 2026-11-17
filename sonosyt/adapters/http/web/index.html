@@ -466,17 +466,6 @@
     .eq i, .spinner { animation-duration: 3s; }
   }
 
-  /* ===== Sonos favourites ================================================================ */
-  .sf-card { flex: none; width: 128px; text-align: left; scroll-snap-align: start; scroll-margin-left: 16px; }
-  .sf-art { width: 128px; aspect-ratio: 1; border-radius: var(--radius); overflow: hidden; display: grid;
-            place-items: center; color: var(--accent);
-            background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 30%, var(--soft)), var(--soft)); }
-  .sf-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .sf-art svg { width: 44px; height: 44px; }
-  .sf-card .title { font-size: .875rem; margin-top: 8px; -webkit-line-clamp: 2; }
-  .sf-card:active .sf-art { transform: scale(.96); }
-  .sf-art { transition: transform .15s var(--ease); }
-
   /* ===== lyrics =========================================================================== */
   #lyricsSheet { height: 86vh; }
   #lyricsBody { padding: 4px 22px 40vh; }
@@ -743,10 +732,6 @@
     <div id="favBox" hidden>
       <div class="label"><button class="label-link" data-lib-link="favorites">Favoriten<svg><use href="#i-chev"/></svg></button></div>
       <ul class="tracklist rail" id="favorites"></ul>
-    </div>
-    <div id="sfBox" hidden>
-      <div class="label"><span>Sonos-Favoriten<small>Radiosender und Playlists aus deiner Sonos-App</small></span></div>
-      <div class="rail" id="sonosFavs"></div>
     </div>
     <div id="plBox" hidden>
       <div class="label"><button class="label-link" data-lib-link="playlists">Deine Playlists<svg><use href="#i-chev"/></svg></button></div>
@@ -1377,49 +1362,12 @@ async function loadSpeakers(refresh) {
   showTabContent(list.length > 0 && view.kind === 'home');
   $('player').hidden = !list.length;
   tellApp();
-  if (!sonosFavs.length) loadSonosFavs();
   await refreshStatus();
-}
-
-// ---- Sonos favourites ---------------------------------------------------------------------
-
-let sonosFavs = [];
-async function loadSonosFavs() {
-  if (!speaker()) return;
-  try { sonosFavs = await api('/api/sonosfav?speaker=' + encodeURIComponent(speaker())); }
-  catch (e) { sonosFavs = []; }
-  renderSonosFavs();
-}
-
-function renderSonosFavs() {
-  $('sfBox').hidden = !sonosFavs.length;
-  $('sonosFavs').replaceChildren(...sonosFavs.map((f) => {
-    const card = el('button', 'sf-card');
-    card.setAttribute('aria-label', `${f.title} abspielen`);
-    const art = el('div', 'sf-art');
-    art.append(icon('radio'));
-    if (f.art) {
-      const img = el('img'); img.alt = ''; img.loading = 'lazy'; img.src = f.art;
-      img.onload = () => art.replaceChildren(img);
-      img.onerror = () => img.remove();
-    }
-    card.append(art, el('div', 'title', f.title));
-    card.onclick = async () => {
-      buzz();
-      try {
-        const r = await api('/api/sonosfav/play', {speaker: speaker(), index: f.index});
-        toast(`Spielt: ${r.title}`);
-      } catch (e) { toast(e.message, true); }
-      setTimeout(refreshStatus, 600);
-    };
-    return card;
-  }));
 }
 
 $('speaker').onchange = () => {
   store('speaker', speaker());
   tellApp();
-  loadSonosFavs();
   status = null; volume = null;
   refreshStatus();
 };
@@ -2954,7 +2902,7 @@ function daysText(days) {
 }
 
 function sourceText(src) {
-  return src.type === 'favorites' ? 'Favoriten' : src.type === 'playlist' ? src.name : src.title || 'Sonos-Favorit';
+  return src.type === 'favorites' ? 'Favoriten' : src.type === 'playlist' ? src.name : 'Favoriten';
 }
 
 async function loadAlarms() {
@@ -3046,7 +2994,7 @@ $('alTest').onclick = async () => {
   } catch (e) { toast(e.message, true); }
 };
 $('addAlarm').onclick = () => {
-  if (!library.favorites.length && !library.playlists.length && !sonosFavs.length) {
+  if (!library.favorites.length && !library.playlists.length) {
     return toast('Lege zuerst Favoriten oder eine Playlist an – die spielt der Wecker dann ab.', true);
   }
   editAlarm(null);
@@ -3380,15 +3328,14 @@ function renderPresets() {
     intro.onclick = () => editPreset(null);
     $('presets').replaceChildren(intro);
   }
-  $('presetBox').hidden = !presets.length && !library.favorites.length && !library.playlists.length && !sonosFavs.length;
+  $('presetBox').hidden = !presets.length && !library.favorites.length && !library.playlists.length;
 }
 
 function fillSourceOptions(select, src) {
   const sources = [option('favorites', 'Favoriten')];
   library.playlists.forEach((p) => sources.push(option('playlist:' + p.name, 'Playlist: ' + p.name)));
-  sonosFavs.forEach((f) => sources.push(option('sonosfav:' + f.index, 'Sonos: ' + f.title)));
   select.replaceChildren(...sources);
-  const current = src.type === 'playlist' ? 'playlist:' + src.name : src.type === 'sonosfav' ? 'sonosfav:' + src.index : 'favorites';
+  const current = src.type === 'playlist' ? 'playlist:' + src.name : 'favorites';
   if (![...select.options].some((o) => o.value === current)) select.append(option(current, sourceText(src)));
   select.value = current;
 }
@@ -3397,10 +3344,6 @@ function sourceFromSelect(select, fallback) {
   const [type, ...rest] = select.value.split(':');
   const value = rest.join(':');
   if (type === 'playlist') return {type, name: value};
-  if (type === 'sonosfav') {
-    const fav = sonosFavs.find((f) => f.index === Number(value));
-    return {type, index: Number(value), title: fav ? fav.title : (fallback && fallback.title) || ''};
-  }
   return {type: 'favorites'};
 }
 

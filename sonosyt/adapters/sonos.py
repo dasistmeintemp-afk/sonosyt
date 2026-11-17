@@ -97,7 +97,6 @@ class SonosController:
         self.discovery_ttl = discovery_ttl
         self._speakers: list = []
         self._upnp_refused: set[str] = set()
-        self._fav_cache: dict[str, tuple] = {}  # speakers that only group via websocket
         self._discovered_at = 0.0
         self._lock = threading.Lock()
 
@@ -399,48 +398,6 @@ class SonosController:
             "muted": bool(self._safe(lambda: self._volume_target(dev).mute, False)),
             "crossfade": bool(self._safe(lambda: coord.cross_fade, False)),
         }
-
-    # -- Sonos favourites (radio stations, playlists from other services) ------
-
-    def _favorites(self, speaker: str, refresh: bool = False) -> tuple:
-        coord = self._coordinator(self.get(speaker))
-        cached = self._fav_cache.get(coord.ip_address)
-        if cached and not refresh and time.monotonic() - cached[0] < 60:
-            return coord, cached[1]
-        favs = list(coord.music_library.get_sonos_favorites(complete_result=True))
-        self._fav_cache[coord.ip_address] = (time.monotonic(), favs)
-        return coord, favs
-
-    def favorites(self, speaker: str) -> list[dict]:
-        coord, favs = self._favorites(speaker, refresh=True)
-        out = []
-        for index, fav in enumerate(favs):
-            art = getattr(fav, "album_art_uri", "") or ""
-            if art.startswith("/"):
-                art = f"http://{coord.ip_address}:1400{art}"
-            out.append({"index": index, "title": fav.title or "", "art": art,
-                        "kind": getattr(fav, "description", "") or ""})
-        return out
-
-    def play_favorite(self, speaker: str, index: int) -> str:
-        """Play a Sonos favourite. Returns its title."""
-        coord, favs = self._favorites(speaker)
-        if not 0 <= index < len(favs):
-            raise SpeakerError("Diesen Sonos-Favoriten gibt es nicht mehr.")
-        fav = favs[index]
-        try:
-            ref = fav.reference
-        except Exception as exc:  # noqa: BLE001
-            raise SpeakerError(f"„{fav.title}“ lässt sich hier nicht abspielen.") from exc
-        item_class = getattr(ref, "item_class", "") or ""
-        if item_class.startswith("object.container"):
-            # A playlist or album: it goes into the queue, after what is playing.
-            position = coord.add_to_queue(ref)
-            coord.play_from_queue(position - 1)
-        else:  # radio station or single track
-            coord.play_uri(ref.get_uri(), getattr(fav, "resource_meta_data", "") or "",
-                           title=fav.title or "")
-        return fav.title or ""
 
     def reachable(self, speaker: str) -> bool:
         """Does the speaker answer on its control port right now?"""

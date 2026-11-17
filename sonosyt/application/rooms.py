@@ -50,14 +50,6 @@ class RoomService:
     def set_eq(self, room: str, bass=None, treble=None, loudness=None) -> dict:
         return self.speakers.set_eq(room, bass, treble, loudness)
 
-    def favorites(self, speaker: str) -> list[dict]:
-        return self.speakers.favorites(speaker)
-
-    def play_favorite(self, speaker: str, index: int) -> dict:
-        title = self.speakers.play_favorite(speaker, int(index))
-        self.playback.mark_active(speaker)
-        return {"title": title}
-
     def require(self, speaker: str) -> None:
         """Raises SpeakerError unless the room exists."""
         self.speakers.address(speaker)

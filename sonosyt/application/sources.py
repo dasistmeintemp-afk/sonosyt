@@ -1,11 +1,11 @@
-"""Playing a music source (favourites, a playlist, a Sonos favourite) in a room."""
+"""Playing a music source (favourites or a playlist) in a room."""
 
 from __future__ import annotations
 
 import random
 
 from ..domain.errors import MediaError
-from ..domain.source import describe
+from ..domain.source import describe, normalize_source
 from .playback import PlaybackService
 from .ports import LibraryRepository, SpeakerSystem
 
@@ -18,10 +18,7 @@ class SourcePlayer:
 
     def play(self, speaker: str, source: dict, shuffle: bool = False) -> str:
         """Start the source now. Returns what is playing, for messages."""
-        if source["type"] == "sonosfav":
-            title = self.speakers.play_favorite(speaker, source["index"])
-            self.playback.mark_active(speaker)
-            return title
+        source = normalize_source(source)   # also turns older Sonos favourites into favourites
         snapshot = self.library.snapshot()
         if source["type"] == "playlist":
             tracks = next((p["tracks"] for p in snapshot["playlists"] if p["name"] == source["name"]), None)

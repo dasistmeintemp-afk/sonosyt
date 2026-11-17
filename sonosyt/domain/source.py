@@ -1,4 +1,4 @@
-"""What to play: the user's favourites, one of their playlists, or a Sonos favourite."""
+"""What to play: the user's favourites or one of their playlists."""
 
 from __future__ import annotations
 
@@ -14,16 +14,12 @@ def normalize_source(source) -> dict:
         if not name:
             raise ValueError("Playlist fehlt.")
         return {"type": kind, "name": name}
-    if kind == "favorites":
-        return {"type": kind}
-    if kind == "sonosfav":
-        return {"type": kind, "index": int(source.get("index")), "title": str(source.get("title") or "")[:120]}
+    if kind in ("favorites", "sonosfav"):   # Sonos favourites are no longer offered: favourites instead
+        return {"type": "favorites"}
     raise ValueError("Was soll gespielt werden?")
 
 
 def describe(source: dict) -> str:
     if source["type"] == "favorites":
         return "Favoriten"
-    if source["type"] == "playlist":
-        return source["name"]
-    return source.get("title") or "Sonos-Favorit"
+    return source["name"]

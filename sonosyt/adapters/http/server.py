@@ -66,7 +66,6 @@ def get_routes(app: Application) -> dict:
         "/api/status": lambda q: app.playback.status(_q(q, "speaker")),
         "/api/queue": lambda q: app.rooms.queue(_q(q, "speaker")),
         "/api/rooms": lambda q: app.rooms.rooms(_q(q, "speaker")),
-        "/api/sonosfav": lambda q: app.rooms.favorites(_q(q, "speaker")),
         "/api/library": lambda q: app.library.snapshot(),
         "/api/alarms": lambda q: app.alarms.list(),
         "/api/presets": lambda q: app.presets.list(),
@@ -118,7 +117,6 @@ def post_routes(app: Application) -> dict:
         "/api/control": control,
         "/api/group": lambda b: app.rooms.group(str(b["speaker"]), str(b["room"]), bool(b.get("join"))),
         "/api/eq": lambda b: app.rooms.set_eq(str(b["room"]), b.get("bass"), b.get("treble"), b.get("loudness")),
-        "/api/sonosfav/play": lambda b: app.rooms.play_favorite(str(b["speaker"]), b["index"]),
         "/api/favorite": lambda b: app.library.set_favorite(b["id"], b.get("favorite", True)),
         "/api/playlist": lambda b: app.library.edit_playlist(
             str(b["name"]), str(b.get("op") or "add"), b.get("id"), b.get("ids")),

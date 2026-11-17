@@ -115,13 +115,11 @@ Danach:
   Live-Mitschnitten, Mixen oder Karaoke. Die Liste stammt aus dem öffentlichen Charts-Feed von
   Apple Music (YouTube hat seine Trends-Seite 2025 abgeschafft); das Land lässt sich mit
   `SONOSYT_CHARTS_COUNTRY` (z. B. `at`, `ch`) ändern.
-- **Sonos-Favoriten:** Radiosender und Playlists aus der Sonos-App erscheinen auf „Start" und
-  starten mit einem Tipp.
 - **Songtexte** (Knopf „Songtext" in der großen Wiedergabe-Ansicht) kommen von
   [LRCLIB](https://lrclib.net); wo vorhanden laufen sie zeilengenau mit, ein Tipp auf eine Zeile
   springt dorthin.
-- **Wecker** (Einstellungen → Wecker): zu einer Uhrzeit an gewählten Wochentagen Favoriten, eine
-  Playlist oder einen Sonos-Favoriten in einem Raum starten, auf Wunsch sanft lauter werdend.
+- **Wecker** (Einstellungen → Wecker): zu einer Uhrzeit an gewählten Wochentagen Favoriten oder eine
+  Playlist in einem Raum starten, auf Wunsch sanft lauter werdend.
   Der Server weckt – das Handy muss dafür nicht an sein.
 - **Wischen** auf dem Cover oder dem Mini-Player wechselt zum nächsten oder vorherigen Titel;
   **Überblenden** lässt sich in der Warteschlange einschalten.

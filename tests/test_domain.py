@@ -101,7 +101,9 @@ def test_sources_and_presets():
     from sonosyt.domain.source import describe, normalize_source
 
     assert normalize_source({"type": "playlist", "name": "Chill"}) == {"type": "playlist", "name": "Chill"}
-    assert describe(normalize_source({"type": "sonosfav", "index": 2, "title": "Radio"})) == "Radio"
+    # Sonos favourites are gone; alarms and presets that used one play the favourites
+    assert normalize_source({"type": "sonosfav", "index": 2, "title": "Radio"}) == {"type": "favorites"}
+    assert describe({"type": "favorites"}) == "Favoriten"
     for bad in (None, {}, {"type": "playlist"}, {"type": "spotify"}):
         with pytest.raises(ValueError):
             normalize_source(bad)
