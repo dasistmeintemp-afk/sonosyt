@@ -5,8 +5,9 @@ from __future__ import annotations
 import threading
 
 from ..domain.errors import MediaError
+from ..domain.music import artist_songs, by_artist, looks_like_song, music_only
 from ..domain.playback import likely_picks
-from ..domain.track import Track, watch_id
+from ..domain.track import VIDEO_ID_RE, Track, watch_id
 from .ports import AudioConverter, LibraryRepository, VideoCatalog
 
 
@@ -28,8 +29,13 @@ class TrackCatalog:
             while len(self._known) > 2000:
                 self._known.pop(next(iter(self._known)))
 
-    def search(self, query: str, prefetch: bool = False, limit: int = 10) -> list[Track]:
-        found = self.catalog.lookup(query, limit)
+    def search(self, query: str, prefetch: bool = False, limit: int = 10, music: bool = False) -> list[Track]:
+        """With ``music``, a search term finds songs only (links are taken as they are)."""
+        term = query.strip()
+        songs = music and not term.lower().startswith(("http://", "https://")) and not VIDEO_ID_RE.match(term)
+        found = self.catalog.lookup(query, min(30, limit * 2) if songs else limit)
+        if songs:
+            found = music_only(found, term)[:limit]
         self.remember(found)
         if prefetch:
             # Convert the most likely picks already, so a tap starts at once.
@@ -48,9 +54,24 @@ class TrackCatalog:
         return found[0]
 
     def related(self, video_id: str) -> list[Track]:
-        found = self.catalog.related(watch_id(video_id))
+        found = music_only(self.catalog.related(watch_id(video_id)))   # no mixes, podcasts ...
         self.remember(found)
         return found
+
+    def artist(self, name: str) -> list[Track]:
+        """An artist's songs, their own uploads first."""
+        name = " ".join(str(name).split())[:80]
+        if not name:
+            raise ValueError("Künstler fehlt.")
+        found = artist_songs(self.catalog.lookup(name, 30), name)
+        self.remember(found)
+        return found
+
+    def newest(self, artist: str, limit: int = 4) -> list[Track]:
+        """The artist's latest songs (their own uploads only)."""
+        found = [t for t in self.catalog.latest(artist, 15) if looks_like_song(t) and by_artist(t, artist)]
+        self.remember(found)
+        return found[:limit]
 
     def suggest(self, query: str) -> list[str]:
         return self.catalog.suggest(query[:200])

@@ -109,6 +109,20 @@ Danach:
 - **Voreinstellungen** (oben auf „Start"): Musik, Räume und Lautstärke zusammen speichern und mit
   einem Tipp starten – der erste Raum spielt, die anderen werden dazugeschaltet. Lange drücken
   bearbeitet eine Voreinstellung.
+- **Nur Musik:** Die Suche findet Songs und Musikvideos – Podcasts, Reaktionsvideos, Tutorials,
+  stundenlange Mixe und Livestreams bleiben draußen (außer man sucht danach, z. B. „… live" oder
+  „… karaoke"). Ein Tipp auf „Nur Musik" über den Ergebnissen zeigt wieder alle Videos. Auch
+  „Ähnliche Titel", „Für dich" und Autoplay bleiben bei Musik.
+- **Radio zu einem Titel** (Menü ⋯ eines Titels): spielt den Titel und danach ähnliche Songs;
+  Autoplay wird für den Raum eingeschaltet, so geht es endlos weiter.
+- **Künstler:** Ein Tipp auf den Künstlernamen in der großen Wiedergabe-Ansicht oder „Mehr von …"
+  im Menü zeigt seine Songs (eigene Uploads zuerst, jeder Song nur einmal) mit „Abspielen" und
+  „Zufällig". Mit **Folgen** erscheinen neue Songs des Künstlers auf „Start" unter „Neu von
+  deinen Künstlern"; die Liste aller gefolgten Künstler steht in der Bibliothek.
+- **Gleiche Lautstärke:** Der Server gleicht beim Umwandeln die Lautheit aller Titel an (wie
+  Streamingdienste), damit auf ein leises Video kein viel zu lautes folgt. Abschalten mit
+  `SONOSYT_NORMALIZE=0`. Gilt für neu umgewandelte Titel – wer alle angleichen will, leert
+  einmal den Zwischenspeicher (Einstellungen).
 - **Charts** (auf „Start"): die aktuell meistgehörten Songs (Deutschland, täglich aktuell) als
   Leiste mit Platzierung – ein Tipp spielt den Song, „Alle" die ganze Liste. Der Server sucht
   jeden Song auf YouTube und bevorzugt dabei das offizielle Video bzw. den Song selbst statt
@@ -166,7 +180,7 @@ sehen, überspringen und pausieren.
 
 | Option | Bedeutung |
 | --- | --- |
-| `--port 8327` | Port des Servers (alle Optionen gehen auch als Umgebungsvariable, z. B. `SONOSYT_PORT`, `SONOSYT_SPEAKER_IP`, `SONOSYT_PUBLIC_URL`, `SONOSYT_BITRATE`, `SONOSYT_CHARTS_COUNTRY`) |
+| `--port 8327` | Port des Servers (alle Optionen gehen auch als Umgebungsvariable, z. B. `SONOSYT_PORT`, `SONOSYT_SPEAKER_IP`, `SONOSYT_PUBLIC_URL`, `SONOSYT_BITRATE`, `SONOSYT_CHARTS_COUNTRY`, `SONOSYT_NORMALIZE`) |
 | `--speaker-ip IP` | Adresse eines beliebigen Sonos-Lautsprechers vorgeben, falls die automatische Suche nichts findet (z. B. Lautsprecher in einem anderen VLAN); die übrigen Räume werden darüber gefunden |
 | `--public-url URL` | Adresse, unter der die Lautsprecher den Server erreichen, falls die automatische Erkennung nicht passt |
 | `--cache-dir`, `--cache-size-mb 2048` | Ort und Maximalgröße des MP3-Zwischenspeichers |

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import re
 
+from .music import by_artist, looks_like_song
 from .track import Track
 
 COUNTRIES = {"de": "Deutschland", "at": "Österreich", "ch": "Schweiz", "us": "USA", "gb": "Großbritannien",
              "fr": "Frankreich", "it": "Italien", "es": "Spanien", "nl": "Niederlande"}
-MAX_SONG = 12 * 60  # longer hits are mixes, compilations or full concerts
-AVOID = re.compile(r"\b(1 hour|10 hours|stunde|mix|compilation|playlist|karaoke|reaction|cover)\b", re.I)
+# besides what is no song at all: versions that are not the hit itself
+OTHER_VERSION = re.compile(r"\b(mix|cover|sped up|slowed|nightcore|8d)\b", re.I)
 
 
 def chart_title(country: str) -> str:
@@ -23,16 +24,11 @@ def chart_query(artist: str, title: str) -> str:
 
 
 def best_match(hits: list[Track], artist: str = "", title: str = "") -> Track | None:
-    """The hit that is most likely the song itself: not live, not a long mix; the
-    official upload ("<Artist> - Topic", "VEVO" or the artist's channel) first."""
-    songs = [t for t in hits if not t.live and (t.duration is None or 60 <= t.duration <= MAX_SONG)
-             and not (AVOID.search(t.title) and not AVOID.search(title))]
+    """The hit that is most likely the song itself: a song, not another version of
+    it; the official upload ("<Artist> - Topic", VEVO, the artist's channel) first."""
+    songs = [t for t in hits if looks_like_song(t, title)
+             and not (OTHER_VERSION.search(t.title) and not OTHER_VERSION.search(title))]
     if not songs:
         return None
-    name = artist.split(",")[0].split("&")[0].strip().lower()
-
-    def official(t: Track) -> bool:
-        channel = t.uploader.lower()
-        return bool(name) and (channel.startswith(name) or "vevo" in channel)
-
-    return next((t for t in songs if official(t)), songs[0])
+    name = artist.split(",")[0].split("&")[0].strip()
+    return next((t for t in songs if by_artist(t, name) or "vevo" in t.uploader.lower()), songs[0])

@@ -96,6 +96,9 @@ class Job:
                     time.sleep(0.2)
 
 
+LOUDNORM = "loudnorm=I=-14:TP=-1.5:LRA=11"
+
+
 class Transcoder:
     def __init__(
         self,
@@ -105,8 +108,12 @@ class Transcoder:
         source_cmd: Callable[[str], list[str]] = ytdlp_source_cmd,
         ffmpeg: str = "ffmpeg",
         live_url_cmd: Callable[[str], list[str]] = ytdlp_live_url_cmd,
+        normalize: bool = False,
     ):
         self.live_url_cmd = live_url_cmd
+        # Same loudness for every track (EBU R128, as streaming services do), so a
+        # quiet upload is not followed by one that is far too loud.
+        self.audio_filter = ["-af", LOUDNORM] if normalize else []
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.bitrate = bitrate
@@ -208,7 +215,7 @@ class Transcoder:
                 self.ffmpeg, "-nostdin", "-hide_banner", "-loglevel", "error",
                 "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
                 "-i", urls[0],
-                "-vn", "-map_metadata", "-1",
+                "-vn", "-map_metadata", "-1", *self.audio_filter,
                 "-c:a", "libmp3lame", "-b:a", self.bitrate, "-ar", "44100", "-ac", "2",
                 "-f", "mp3", "pipe:1",
             ],
@@ -241,7 +248,7 @@ class Transcoder:
                 [
                     self.ffmpeg, "-nostdin", "-hide_banner", "-loglevel", "error",
                     "-i", "pipe:0",
-                    "-vn", "-map_metadata", "-1",
+                    "-vn", "-map_metadata", "-1", *self.audio_filter,
                     "-c:a", "libmp3lame", "-b:a", self.bitrate, "-ar", "44100", "-ac", "2",
                     "-f", "mp3", "-y", str(job.path),
                 ],

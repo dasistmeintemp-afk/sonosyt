@@ -13,6 +13,7 @@ from pathlib import Path
 from . import __version__
 from .application.alarms import AlarmService
 from .application.app import Application
+from .application.artists import ArtistService
 from .application.background import AutoplayService, Monitor
 from .application.charts import ChartService
 from .application.library import LibraryService
@@ -46,6 +47,7 @@ def build(
     video_feed=None,
     chart_source=None,
     charts_country: str = "de",
+    normalize: bool = True,
 ) -> Application:
     cache_dir = Path(cache_dir)
     if speakers is None:
@@ -64,7 +66,8 @@ def build(
     if converter is None:
         from .adapters.transcoder import Transcoder
 
-        converter = Transcoder(cache_dir, bitrate=bitrate, max_cache_bytes=cache_size_mb * 1024**2)
+        converter = Transcoder(cache_dir, bitrate=bitrate, max_cache_bytes=cache_size_mb * 1024**2,
+                               normalize=normalize)
     if library is None:
         from .adapters.json_library import Library
 
@@ -118,6 +121,7 @@ def build(
         streaming=streaming,
         system=SystemService(__version__, speakers, converter, network, tools, playback, streaming),
         charts=ChartService(chart_source, tracks, charts_country),
+        artists=ArtistService(tracks, library),
     )
 
 

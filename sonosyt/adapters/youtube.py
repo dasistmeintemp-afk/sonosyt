@@ -82,6 +82,12 @@ def lookup(query: str, limit: int = 10) -> list[Track]:
     return _tracks(_extract(target))
 
 
+def latest(query: str, limit: int = 10) -> list[Track]:
+    """Search results, newest first."""
+    query = query.strip()
+    return _tracks(_extract(f"ytsearchdate{int(limit)}:{query}")) if query else []
+
+
 def related(video_id: str) -> list[Track]:
     """Videos YouTube would play after this one (its auto-generated mix)."""
     mix = f"{watch_url(video_id)}&list=RD{video_id}"
@@ -156,6 +162,9 @@ class YtDlpCatalog:
 
     def related(self, video_id: str) -> list[Track]:
         return self._healing(related, video_id)
+
+    def latest(self, query: str, limit: int = 10) -> list[Track]:
+        return self._healing(latest, query, limit)
 
     def suggest(self, query: str) -> list[str]:
         return suggest(query)

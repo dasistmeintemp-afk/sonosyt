@@ -28,6 +28,7 @@ class Library:
         self._positions: dict[str, int] = {}  # video id -> seconds, to resume long videos
         self._alarms: list[dict] = []
         self._presets: list[dict] = []
+        self._artists: list[str] = []
         self._load()
 
     def _load(self) -> None:
@@ -50,6 +51,7 @@ class Library:
         self._favorites = tracks("favorites")
         self._history = tracks("history")[:HISTORY_LIMIT]
         self._autoplay = {str(name) for name in data.get("autoplay") or []}
+        self._artists = [str(a)[:80] for a in data.get("artists") or [] if str(a).strip()][:50]
         positions = data.get("positions")
         if isinstance(positions, dict):
             for video_id, seconds in positions.items():
@@ -80,6 +82,7 @@ class Library:
             "positions": self._positions,
             "alarms": self._alarms,
             "presets": self._presets,
+            "artists": self._artists,
         }
         tmp = self.path.with_suffix(".tmp")
         try:
@@ -102,6 +105,7 @@ class Library:
                 "favorites": [t.to_dict() for t in self._favorites],
                 "history": [t.to_dict() for t in self._history],
                 "playlists": self._playlist_dicts(),
+                "artists": list(self._artists),
             }
 
     def tracks(self) -> list[Track]:
@@ -257,6 +261,24 @@ class Library:
                 self._positions[video_id] = int(seconds)
                 while len(self._positions) > 200:
                     self._positions.pop(next(iter(self._positions)))
+            self._save()
+
+    # -- followed artists ------------------------------------------------------
+
+    def artists(self) -> list[str]:
+        with self._lock:
+            return list(self._artists)
+
+    def set_follow(self, artist: str, on: bool) -> None:
+        artist = " ".join(str(artist).split())[:80]
+        if not artist:
+            raise ValueError("Künstler fehlt.")
+        with self._lock:
+            self._artists = [a for a in self._artists if a.lower() != artist.lower()]
+            if on:
+                if len(self._artists) >= 50:
+                    raise ValueError("Höchstens 50 Künstler.")
+                self._artists.insert(0, artist)
             self._save()
 
     # -- autoplay ------------------------------------------------------------

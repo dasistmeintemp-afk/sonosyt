@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .alarms import AlarmService
+from .artists import ArtistService
 from .background import AutoplayService, Monitor
 from .charts import ChartService
 from .library import LibraryService
@@ -30,3 +31,4 @@ class Application:
     streaming: StreamingService
     system: SystemService
     charts: ChartService
+    artists: ArtistService

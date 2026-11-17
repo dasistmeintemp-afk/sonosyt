@@ -348,7 +348,7 @@ def test_suggest_playlists_modes_and_move(srv):
     base, app, sonos = srv
     assert json.loads(call(base + "/api/suggest?q=fred")[2]) == ["fred live", "fred remix"]
     related = json.loads(call(base + f"/api/related?id={VID}")[2])
-    assert [t["id"] for t in related] == ["llllllllll1", "bbbbbbbbbbb", "ddddddddddd"]
+    assert [t["id"] for t in related] == ["bbbbbbbbbbb", "ddddddddddd"]  # music only: no livestream
     assert call(base + "/api/related?id=nope")[0] == 400
 
     call(base + "/api/search?q=beatles")
@@ -681,3 +681,24 @@ def test_server_update_check(srv):
     assert json.loads(call(base + "/api/update")[2])["newer"] is False  # numbers, not text
     tools.latest = None
     assert json.loads(call(base + "/api/update")[2])["newer"] is False
+
+
+def test_radio_follow_and_artist_routes(srv):
+    base, env, sonos = srv
+    app = env.app
+    env.catalog.related = lambda vid: [Track("ddddddddddd", "Fresh", "X", 200), Track("eeeeeeeeeee", "Long mix", "X", 4000),
+                                       Track("llllllllll1", "Live", live=True)]
+    call(base + "/api/search?q=beatles")
+    status, _, body = call(base + "/api/radio", {"speaker": "Küche", "id": VID})
+    assert status == 200 and json.loads(body)["radio"] == "Song"
+    assert [t.id for t, _ in sonos.enqueued[-1][1]] == [VID, "ddddddddddd"]
+    assert app.library.repository.autoplay("Küche")
+
+    env.catalog.lookup = lambda q, limit=10: [Track("fffffffffff", "Chan - Hit", "Chan", 200)]
+    page = json.loads(call(base + "/api/artist?name=Chan")[2])
+    assert page["name"] == "Chan" and page["followed"] is False and page["tracks"][0]["id"] == "fffffffffff"
+    assert json.loads(call(base + "/api/follow", {"name": "Chan"})[2]) == {"artists": ["Chan"]}
+    assert json.loads(call(base + "/api/artist?name=Chan")[2])["followed"] is True
+    assert json.loads(call(base + "/api/library")[2])["artists"] == ["Chan"]
+    assert json.loads(call(base + "/api/follow", {"name": "Chan", "on": False})[2]) == {"artists": []}
+    assert call(base + "/api/follow", {"name": " "})[0] == 400

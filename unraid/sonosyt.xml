@@ -23,6 +23,7 @@
   <Config Name="Zusätzlicher Hostname" Target="SONOSYT_ALLOW_HOST" Default="" Mode="" Description="Nur nötig, wenn du sonosyt über einen eigenen Domainnamen aufrufst. IP-Adressen und Namen wie tower.local funktionieren immer." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="Öffentliche Adresse" Target="SONOSYT_PUBLIC_URL" Default="" Mode="" Description="Adresse, unter der die Lautsprecher den Server erreichen, falls die automatische Erkennung nicht passt, z. B. http://192.168.1.49:8327" Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="MP3-Bitrate" Target="SONOSYT_BITRATE" Default="192k" Mode="" Description="Qualität der umgewandelten Titel." Type="Variable" Display="advanced" Required="false" Mask="false">192k</Config>
+  <Config Name="Lautstärke angleichen" Target="SONOSYT_NORMALIZE" Default="1" Mode="" Description="1: alle Titel gleich laut (empfohlen), 0: aus." Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
   <Config Name="Charts-Land" Target="SONOSYT_CHARTS_COUNTRY" Default="de" Mode="" Description="Land der Charts auf der Startseite (de, at, ch, us …)." Type="Variable" Display="advanced" Required="false" Mask="false">de</Config>
   <Config Name="Zwischenspeicher (MB)" Target="SONOSYT_CACHE_SIZE_MB" Default="2048" Mode="" Description="Höchstgröße des Zwischenspeichers für umgewandelte Titel." Type="Variable" Display="advanced" Required="false" Mask="false">2048</Config>
 </Container>

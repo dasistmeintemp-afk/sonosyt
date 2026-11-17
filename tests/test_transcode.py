@@ -1,4 +1,6 @@
 import os
+import re
+import subprocess
 import sys
 import time
 
@@ -88,3 +90,23 @@ def test_rejects_bad_ids(tmp_path):
     for bad in ("../etc/passwd", "short", "abcdefghijk.mp3"):
         with pytest.raises(ValueError):
             tc.ensure(bad)
+
+
+def test_loudness_is_evened_out(tmp_path):
+    """A quiet track comes out at the common loudness; without normalising it stays quiet."""
+    def quiet(video_id):
+        return ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=4",
+                "-af", "volume=-30dB", "-f", "wav", "pipe:1"]
+
+    def mean_volume(path):
+        out = subprocess.run(["ffmpeg", "-i", str(path), "-af", "volumedetect", "-f", "null", "-"],
+                             capture_output=True, text=True).stderr
+        return float(re.search(r"mean_volume: (-?[\d.]+) dB", out).group(1))
+
+    levels = {}
+    for normalize in (False, True):
+        tc = Transcoder(tmp_path / str(normalize), source_cmd=quiet, normalize=normalize)
+        job = tc.ensure("aaaaaaaaaaa")
+        assert job.done.wait(30) and job.ok, job.error
+        levels[normalize] = mean_volume(job.final)
+    assert levels[True] > levels[False] + 10

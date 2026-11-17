@@ -99,6 +99,17 @@
                  color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden;
                  text-overflow: ellipsis; }
   .label .tools { display: flex; gap: 8px; }
+  #musicOnly[aria-pressed="false"] { opacity: .7; }
+  #followArtist[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+  .player.expanded #nowSub { cursor: pointer; text-decoration: underline; text-decoration-color: transparent;
+                             text-underline-offset: 3px; transition: text-decoration-color .2s; }
+  .player.expanded #nowSub:hover { text-decoration-color: currentColor; }
+  .artist-list { display: flex; flex-direction: column; }
+  .artist-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; text-align: left; font-weight: 650;
+                font-size: 1rem; }
+  .artist-row .avatar { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; flex: none;
+                        font-weight: 800; font-size: 1.125rem; color: var(--accent);
+                        background: color-mix(in srgb, var(--accent) 18%, var(--soft)); }
   .label .tools .pill { font-size: .875rem; height: 34px; padding: 0 14px; gap: 6px; align-self: center; }
   .label .tools .pill svg { width: 16px; height: 16px; }
   .rank { position: absolute; left: 8px; bottom: 6px; z-index: 1; font-size: 1.75rem; font-weight: 850;
@@ -194,6 +205,9 @@
   .hero-art { flex: none; width: 128px; }
   .hero-art .mosaic, .hero-art img { width: 128px; border-radius: var(--radius); box-shadow: var(--shadow); }
   .hero-art img { aspect-ratio: 1; object-fit: cover; display: block; }
+  .hero-art .artist-art { width: 128px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center;
+                          font-size: 3.5rem; font-weight: 850; color: #fff; box-shadow: var(--shadow);
+                          background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 35%, #000)); }
   .hero-text { min-width: 0; flex: 1; }
   .hero-text h1 { font-size: 1.625rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15;
                   margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
@@ -729,6 +743,10 @@
         <span class="tools"><button class="pill" id="chartPlay"><svg><use href="#i-play"/></svg>Alle</button></span></div>
       <ul class="tracklist rail" id="charts"></ul>
     </div>
+    <div id="newBox" hidden>
+      <div class="label"><button class="label-link" data-lib-link="artists">Neu von deinen Künstlern<svg><use href="#i-chev"/></svg></button></div>
+      <ul class="tracklist rail" id="newSongs"></ul>
+    </div>
     <div id="favBox" hidden>
       <div class="label"><button class="label-link" data-lib-link="favorites">Favoriten<svg><use href="#i-chev"/></svg></button></div>
       <ul class="tracklist rail" id="favorites"></ul>
@@ -773,6 +791,7 @@
       <button class="pill" data-lib="playlists">Playlists</button>
       <button class="pill" data-lib="favorites">Favoriten</button>
       <button class="pill" data-lib="history">Verlauf</button>
+      <button class="pill" data-lib="artists">Künstler</button>
     </div>
     <div id="libList"></div>
     <div class="hint" id="libEmpty" hidden></div>
@@ -795,6 +814,8 @@
       <button class="pill" id="shuffleAll" hidden><svg><use href="#i-shuffle"/></svg>Zufällig</button>
       <button class="pill" id="savePlaylist" hidden><svg><use href="#i-plus"/></svg>Speichern</button>
       <button class="pill" id="delPlaylist" hidden>Löschen</button>
+      <button class="pill" id="followArtist" hidden aria-pressed="false"><svg><use href="#i-plus"/></svg><span>Folgen</span></button>
+      <button class="pill" id="musicOnly" hidden aria-pressed="true">Nur Musik</button>
     </div>
     <ul class="tracklist" id="results"></ul>
     <button class="pill" id="more" hidden>Mehr anzeigen</button>
@@ -1533,6 +1554,112 @@ $('chartPlay').onclick = () => {
   play(ids, 'now');
 };
 
+// ---- songs, radio, artists -------------------------------------------------------------
+
+const musicOnly = () => settings.allVideos !== true;
+$('musicOnly').onclick = () => {
+  settings.allVideos = musicOnly();
+  store('settings', settings);
+  buzz();
+  search();
+};
+
+// Who sings it: an "Artist - Topic" channel names them, else an "Artist - Song" title does.
+function artistOf(t) {
+  const up = (t.uploader || '').trim();
+  if (/\s-\s*topic$/i.test(up)) return up.replace(/\s*-\s*topic$/i, '');
+  if ((t.title || '').includes(' - ')) return t.title.split(' - ')[0].split(/\s+(?:feat\.?|ft\.?|x|&|,)\s+/i)[0].trim();
+  return up.replace(/vevo$/i, '').replace(/\s*(official|music)$/i, '').trim() || up || 'Unbekannt';
+}
+
+async function startRadio(t, row) {
+  if (!speaker()) return toast('Kein Lautsprecher ausgewählt.', true);
+  if (row) row.classList.add('busy');
+  buzz();
+  try {
+    const r = await api('/api/radio', {speaker: speaker(), id: t.id});
+    toast(`Radio gestartet – ${r.queued.length - 1} ähnliche Titel folgen, danach geht es weiter`);
+  } catch (e) { toast(e.message, true); }
+  if (row) row.classList.remove('busy');
+  loadLibrary();
+  refreshStatus();
+}
+
+const isFollowed = (name) => (library.artists || []).some((a) => a.toLowerCase() === String(name).toLowerCase());
+
+async function openArtist(name) {
+  if (!name) return;
+  const seq = ++searchSeq;
+  $('q').value = ''; $('clear').hidden = true;
+  showTabContent(false);
+  $('resultsBox').hidden = true;
+  loading(true);
+  window.scrollTo(0, 0);
+  let page;
+  try { page = await api('/api/artist?name=' + encodeURIComponent(name)); }
+  catch (e) {
+    if (seq !== searchSeq) return;
+    loading(false);
+    if (view.kind === 'home') showHome(); else $('resultsBox').hidden = false;
+    return toast(e.message, true);
+  }
+  if (seq !== searchSeq) return;
+  if (!page.tracks.length) {
+    loading(false);
+    if (view.kind === 'home') showHome(); else $('resultsBox').hidden = false;
+    return toast(`Keine Songs von ${name} gefunden.`, true);
+  }
+  view = {kind: 'artist', name: page.name};
+  results = page.tracks;
+  showResults(page.name, true);
+}
+
+function paintFollow() {
+  const on = isFollowed(view.name);
+  $('followArtist').setAttribute('aria-pressed', on);
+  $('followArtist').querySelector('span').textContent = on ? 'Folge ich' : 'Folgen';
+  $('followArtist').querySelector('use').setAttribute('href', on ? '#i-check' : '#i-plus');
+}
+
+$('followArtist').onclick = async () => {
+  const name = view.name, on = !isFollowed(name);
+  buzz();
+  try {
+    const r = await api('/api/follow', {name, on});
+    library.artists = r.artists;
+    paintFollow();
+    toast(on ? `Du folgst ${name} – neue Songs erscheinen auf „Start“` : `Du folgst ${name} nicht mehr`);
+    newSongs.at = 0;
+    renderLibrary();
+  } catch (e) { toast(e.message, true); }
+};
+
+// "Neu von deinen Künstlern": the server looks them up in the background.
+let newSongs = {items: [], at: 0, polls: 0};
+async function loadNewSongs(again) {
+  if (!(library.artists || []).length) { newSongs = {items: [], at: 0, polls: 0}; return renderNewSongs(); }
+  if (!again && Date.now() - newSongs.at < 15 * 60 * 1000) return renderNewSongs();
+  try {
+    const data = await api('/api/artists/new');
+    newSongs = {...data, at: Date.now(), polls: again ? newSongs.polls + 1 : 0};
+  } catch (e) { /* keep what we had */ }
+  renderNewSongs();
+  if ((newSongs.pending || []).length && newSongs.polls < 10) {
+    setTimeout(() => { if (view.kind === 'home' && !document.hidden) loadNewSongs(true); }, 5000);
+  }
+}
+
+function renderNewSongs() {
+  const items = (newSongs.items || []).slice(0, 15);
+  $('newBox').hidden = !items.length;
+  $('newSongs').replaceChildren(...items.map((t) => {
+    const card = trackCard(t);
+    card.querySelector('.meta .sub').textContent = t.artist || t.uploader || '';
+    return card;
+  }));
+  markCurrent();
+}
+
 function renderHome() {
   $('greeting').textContent = greeting();
   const seen = new Set();
@@ -1551,6 +1678,7 @@ function renderHome() {
     || library.playlists.length > 0 || !$('chartBox').hidden;
   loadForYou();
   loadCharts(false);
+  loadNewSongs(false);
 
   const recent = store('recent') || [];
   $('recentBox').hidden = !recent.length;
@@ -1578,7 +1706,18 @@ function renderLibrary() {
     b.setAttribute('aria-pressed', b.dataset.lib === libFilter);
   });
   let nodes = [], empty = '';
-  if (libFilter === 'playlists') {
+  if (libFilter === 'artists') {
+    const list = el('div', 'artist-list');
+    list.append(...(library.artists || []).map((name) => {
+      const b = el('button', 'artist-row');
+      b.append(el('span', 'avatar', name.slice(0, 1).toUpperCase()), el('span', '', name));
+      b.onclick = () => openArtist(name);
+      return b;
+    }));
+    if ((library.artists || []).length) nodes = [list];
+    empty = 'Du folgst noch keinem Künstler. Tippe in der Wiedergabe-Ansicht auf den Künstlernamen '
+      + 'oder wähle im Menü eines Titels „Mehr von …“ – dort kannst du ihm folgen.';
+  } else if (libFilter === 'playlists') {
     nodes = library.playlists.map(playlistRow);
     empty = 'Noch keine Playlists. Über die drei Punkte neben einem Titel legst du eine an.';
   } else {
@@ -1659,6 +1798,9 @@ function paintHero() {
     sub = `${countText(results.length)} · ähnlich wie „${view.seed.title}“`;
   } else if (view.kind === 'search') {
     sub = results.length === 1 ? '1 Treffer' : `${results.length} Treffer`;
+  } else if (view.kind === 'artist') {
+    art = el('div', 'artist-art', (view.name || '?').slice(0, 1).toUpperCase());
+    sub = `Künstler · ${countText(results.length)}`;
   }
   const key = [view.kind, view.name, $('count').textContent, results.slice(0, 4).map((t) => t.id)].join('|');
   if (key !== heroKey) {
@@ -1676,6 +1818,11 @@ function showResults(label, withAll) {
   $('all').hidden = !withAll;
   $('shuffleAll').hidden = !withAll;
   $('delPlaylist').hidden = view.kind !== 'playlist';
+  $('musicOnly').hidden = !(view.kind === 'search' && !isUrl(view.term || ''));
+  $('musicOnly').setAttribute('aria-pressed', musicOnly());
+  $('musicOnly').textContent = musicOnly() ? 'Nur Musik' : 'Alle Videos';
+  $('followArtist').hidden = view.kind !== 'artist';
+  if (view.kind === 'artist') paintFollow();
   resetDelete();
   $('resultsBox').hidden = false;
   renderResults();
@@ -1731,7 +1878,7 @@ async function search() {
   const seq = ++searchSeq;
   let found;
   try {
-    found = await api('/api/search?q=' + encodeURIComponent(term));
+    found = await api('/api/search?q=' + encodeURIComponent(term) + (musicOnly() ? '&music=1' : ''));
   } catch (e) {
     if (seq !== searchSeq) return;
     loading(false);
@@ -1919,7 +2066,7 @@ $('more').onclick = async () => {
   $('more').disabled = true;
   $('more').textContent = 'Lädt …';
   try {
-    const found = await api('/api/search?limit=25&q=' + encodeURIComponent(term));
+    const found = await api('/api/search?limit=25&q=' + encodeURIComponent(term) + (musicOnly() ? '&music=1' : ''));
     if (view.kind === 'search' && view.term === term) {
       results = found;
       view.more = true;
@@ -1999,7 +2146,9 @@ function openMenu(t, row, playlistsOnly) {
       $('menuItems').hidden = true;
       $('plChooser').hidden = false;
     }),
-    menuItem('radio', 'Ähnliche Titel anzeigen', () => leavePlayer(() => showRelated(t))),
+    menuItem('radio', 'Radio zu diesem Titel starten', act(() => startRadio(t, row))),
+    menuItem('note', `Mehr von ${artistOf(t)}`, () => leavePlayer(() => openArtist(artistOf(t)))),
+    menuItem('history', 'Ähnliche Titel anzeigen', () => leavePlayer(() => showRelated(t))),
     menuItem('share', 'Link teilen', act(() => shareLink(t))),
     menuItem('open', 'In YouTube öffnen', act(() => {
       const a = el('a'); a.href = 'https://www.youtube.com/watch?v=' + t.id; a.target = '_blank';
@@ -2429,6 +2578,14 @@ function openLyrics() {
 
 const nowTrack = () => ({id: status.video_id, title: status.title, uploader: status.artist || ''});
 ['nowMeta', 'art', 'noart'].forEach((id) => { $(id).onclick = expandPlayer; });
+// In the full-screen player the artist's name leads to their songs.
+$('nowSub').addEventListener('click', (e) => {
+  if (!$('player').classList.contains('expanded') || !status || !status.video_id) return;
+  e.stopPropagation();
+  buzz();
+  const name = artistOf(nowTrack());
+  leavePlayer(() => openArtist(name));
+});
 $('npClose').onclick = () => { if (here() === 'player') history.back(); else collapsePlayer(); };
 
 // Gestures on the player: swipe down closes the full-screen view; swipe sideways

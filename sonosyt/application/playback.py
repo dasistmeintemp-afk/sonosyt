@@ -6,6 +6,7 @@ import threading
 import time
 
 from ..domain.errors import MediaError
+from ..domain.music import music_only
 from ..domain.playback import PLAY_MODES, playback_error, position_to_remember, tracks_to_play
 from ..domain.track import Track, watch_id
 from .ports import AudioConverter, LibraryRepository, Network, SpeakerSystem
@@ -75,6 +76,14 @@ class PlaybackService:
         self.mark_active(speaker)
         resumed = self._resume(speaker, tracks[0]) if mode == "now" and len(tracks) == 1 else 0
         return {"queued": [t.to_dict() for t in tracks], "position": position, "resumed": resumed}
+
+    def radio(self, speaker: str, video_id: str) -> dict:
+        """This song now, similar songs after it, and autoplay on so it never ends."""
+        seed = self.tracks.track(watch_id(str(video_id)))
+        similar = [t for t in music_only(self.tracks.related(seed.id)) if t.id != seed.id and not t.live]
+        result = self.play(speaker, [seed.id] + [t.id for t in similar[:24]], None, "now")
+        self.library.set_autoplay(speaker, True)
+        return {**result, "radio": seed.title}
 
     def enqueue(self, speaker: str, track: Track, mode: str = "queue") -> None:
         """Add one known track, without waiting for anything (used by autoplay)."""
