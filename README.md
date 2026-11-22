@@ -92,6 +92,8 @@ Danach:
   einbetten lässt: Das Bild kommt über deinen Server. Bild und Ton liegen auf Bruchteile einer
   Sekunde beieinander; wer es noch genauer will, stellt unter Einstellungen → Video-Versatz nach.
   **Handy quer halten** zeigt das Video im ganzen Bildschirm, ein Tipp blendet die Steuerung ein.
+- **Mini-Player:** Ein Ring um den Play-Knopf zeigt wie bei Sonos, wie weit der Titel ist; unter dem
+  Titel steht die Restzeit („noch 2:31 · Künstler“).
 - **Unten:** Spulen, Pause, Titel vor/zurück, Lautstärke und die Warteschlange (Titel am
   Griff rechts verschieben, antippen zum Springen). Dort gibt es
   auch Zufall, Wiederholen, Autoplay (nach dem letzten Titel läuft passende Musik weiter)

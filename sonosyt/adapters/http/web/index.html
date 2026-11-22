@@ -248,6 +248,19 @@
   #miniBar i { display: block; height: 100%; width: 0; background: var(--on-tint); }
   .player.expanded #miniBar { display: none; }
   .now { display: flex; align-items: center; gap: 12px; }
+  /* mini player: how far the track has got, as a ring around the play button */
+  #toggle { position: relative; }
+  #toggle svg.ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg);
+                     pointer-events: none; overflow: visible; }
+  .ring circle { fill: none; stroke-width: 2.5; }
+  .ring-track { stroke: color-mix(in srgb, var(--on-tint) 22%, transparent); }
+  .ring-fill { stroke: var(--on-tint); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100;
+               transition: stroke-dashoffset 1s linear; }
+  .ring.jump .ring-fill { transition: none; }
+  .ring.endless .ring-fill { stroke-dashoffset: 0; opacity: .5; }
+  .player.expanded #nowSub .left { display: none; }
+  #nowSub .left { font-variant-numeric: tabular-nums; }
+  .player.expanded #toggle svg.ring, .player.idle #toggle svg.ring { display: none; }
   .now img, .now .noart { flex: none; width: 46px; height: 46px; border-radius: 8px; object-fit: cover;
                           background: color-mix(in srgb, var(--on-tint) 12%, transparent); }
   .now .noart { display: grid; place-items: center; color: var(--muted); }
@@ -258,6 +271,8 @@
   .transport button { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
   .transport button:active { background: color-mix(in srgb, var(--on-tint) 14%, transparent); }
   .transport #toggle svg { width: 30px; height: 30px; }
+  .player:not(.expanded) .transport #toggle svg:not(.ring) { width: 24px; height: 24px; }
+  .player .transport #toggle svg.ring { width: 100%; height: 100%; }
   #nowMeta, #art, #noart { cursor: pointer; }
 
   /* ===== sliders ======================================================================= */
@@ -856,7 +871,9 @@
         <button class="np-only mode" id="npShuffle" aria-pressed="false" aria-label="Zufällige Reihenfolge"><svg><use href="#i-shuffle"/></svg></button>
         <button class="mini-only" id="miniGroup" aria-label="Räume wählen"><svg><use href="#i-speaker"/></svg><span class="badge" id="miniGroupCount" hidden></span></button>
         <button data-action="previous" aria-label="Vorheriger Titel"><svg><use href="#i-prev"/></svg></button>
-        <button id="toggle" aria-label="Wiedergabe"><svg><use id="toggleIcon" href="#i-play"/></svg></button>
+        <button id="toggle" aria-label="Wiedergabe"><svg><use id="toggleIcon" href="#i-play"/></svg>
+          <svg class="ring" viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-track" cx="22" cy="22" r="20.5"/>
+            <circle class="ring-fill" id="ringFill" cx="22" cy="22" r="20.5" pathLength="100"/></svg></button>
         <button data-action="next" aria-label="Nächster Titel"><svg><use href="#i-next"/></svg></button>
         <button class="np-only mode" id="npRepeat" aria-pressed="false" aria-label="Wiederholen"><svg><use id="npRepeatIcon" href="#i-repeat"/></svg></button>
       </div>
@@ -2238,6 +2255,18 @@ function livePosition() {
   return status.duration ? Math.min(pos, status.duration) : pos;
 }
 
+// The ring around the mini player's play button; a jump (new track, seek) is not animated.
+let ringShare = 0;
+function paintRing(s, share) {
+  const ring = document.querySelector('#toggle .ring');
+  ring.classList.toggle('endless', !!(s && s.live));
+  const jump = Math.abs(share - ringShare) > 0.05 || share < ringShare;
+  ring.classList.toggle('jump', jump);
+  if (jump) void ring.getBoundingClientRect();   // apply without transition first
+  $('ringFill').style.strokeDashoffset = (100 - share * 100).toFixed(2);
+  ringShare = share;
+}
+
 function paint() {
   const s = status;
   const has = !!(s && s.title);
@@ -2270,6 +2299,7 @@ function paint() {
   $('player').classList.toggle('idle', !has);
   const share = !has ? 0 : s.live ? 1 : s.duration > 0 ? Math.min(1, livePosition() / s.duration) : 0;
   $('miniFill').style.width = (share * 100).toFixed(2) + '%';
+  paintRing(has ? s : null, share);
   tintFrom(has ? s.video_id : null);
   const ours = !!(has && s.video_id);
   const fav = ours && isFavorite(s.video_id);
@@ -2296,6 +2326,8 @@ function paint() {
   $('dur').textContent = seekable
     ? (settings.remaining ? '-' + fmt(s.duration - livePosition()) : fmt(s.duration))
     : (has && s.live ? 'LIVE' : ' ');
+  // mini player: the time left before the artist ("noch 2:31 · Kanal"), so it is never cut off
+  if (seekable) $('nowSub').prepend(el('span', 'left', 'noch ' + fmt(Math.max(0, s.duration - livePosition())) + ' · '));
   paintOptions();
   if (!$('settingsSheet').hidden) paintSettings();
   if (!$('lyricsSheet').hidden && has && s.video_id && s.video_id !== lyricsFor) loadLyrics();
